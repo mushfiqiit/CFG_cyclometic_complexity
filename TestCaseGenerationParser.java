@@ -49,24 +49,27 @@ public class TestCaseGenerationParser {
                 }
                 conditions.add(temporaryCondition);
             }
-            else if(checker.isInt(line)){
+            else if(checker.isInt(line)) {
+                System.out.println(line);
                 String temporary="";
                 for(int i=0;i<line.length();i++)
                 {
                     if(line.charAt(i)==',' || line.charAt(i)==' ')
                     {
                         Variable tempVariable=new Variable(temporary);
-                        if(temporary!="int") variables.add(tempVariable);
-                        map.put(temporary, 0);
+                        if(!temporary.equals("int") && !temporary.isEmpty()) {
+                            variables.add(tempVariable);
+                            map.put(temporary, 0);
+                        }
                         temporary="";
                     }
-                    else
+                    else if(line.charAt(i)!=';')
                     {
                         temporary=temporary+line.charAt(i);
                     }
                 }
                 Variable tempVariable=new Variable(temporary);
-                if(temporary!="int") variables.add(tempVariable);
+                if(!temporary.equals("int")) variables.add(tempVariable);
                 map.put(temporary, 0);
             }
         }
@@ -74,6 +77,10 @@ public class TestCaseGenerationParser {
         {
             System.out.println(condition.comparisonSign);
             condition.printVariables();
+        }
+
+        for(Variable variable:variables) {
+            System.out.println(variable.variableName+" "+variable.value);
         }
     }
 }

@@ -79,10 +79,11 @@ public class SyntaxIdentifier {
     }
 
     public boolean isInt(String statement) {
-        for(int i=0;i<statement.length()-2;i++) {
-            if(statement.charAt(i)=='i' && statement.charAt(i+1)=='n' && statement.charAt(i+2)=='t') {
-                return true;
-            }
+        String temporary="";
+        for(int i=0;i<statement.length();i++) {
+            if(statement.charAt(i)!=' ') temporary=temporary+statement.charAt(i);
+            System.out.println(temporary);
+            if (temporary.equals("int")) return true;
         }
         return false;
     }
