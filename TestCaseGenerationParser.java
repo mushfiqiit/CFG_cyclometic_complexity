@@ -31,7 +31,7 @@ public class TestCaseGenerationParser {
                                 variable="";
                             }
                         }
-                        else {
+                        else if(line.charAt(i)!=' ') {
                             variable=variable+line.charAt(i);
                             if(!comparison.isEmpty()) {
                                 temporaryCondition.setComparisonSign(comparison);

@@ -82,7 +82,7 @@ public class SyntaxIdentifier {
         String temporary="";
         for(int i=0;i<statement.length();i++) {
             if(statement.charAt(i)!=' ') temporary=temporary+statement.charAt(i);
-            System.out.println(temporary);
+            //System.out.println(temporary);
             if (temporary.equals("int")) return true;
         }
         return false;
