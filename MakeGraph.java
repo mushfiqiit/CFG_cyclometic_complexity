@@ -31,7 +31,7 @@ public class MakeGraph {
     public void start() throws IOException{
         cur=0;
         
-        while(Lines.get(cur).contains("intmain(){") || Lines.get(cur).charAt(0)=='#' || (Lines.get(cur).charAt(0)=='/' && Lines.get(cur).charAt(0)=='/')){
+        while(Lines.get(cur).contains("intmain(){") || Lines.get(cur).charAt(0)=='#' || Lines.get(cur).charAt(0)=='/'){
             cur++;
         }
         

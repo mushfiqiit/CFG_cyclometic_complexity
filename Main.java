@@ -11,11 +11,11 @@ import java.io.IOException;
 public class Main {
     public static void main(String[] args) throws FileNotFoundException, IOException {
        System.out.println("Control Flow Graph\n\n");
-       System.out.println("Enter the directory of a C source code file\n");
+       //System.out.println("Enter the directory of a C source code file\n");
        String fileName="test.txt";                         // F:\\Downloads\\CFG-master\\test.txt
 //       Scanner input = new Scanner(System.in);
 //       fileName = input.next();
-       SourceCodeReader Sc;                
+       SourceCodeReader Sc;
        Sc = new SourceCodeReader(fileName);
     }  
 }
