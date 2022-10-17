@@ -3,7 +3,7 @@ package cfg;
 import java.util.ArrayList;
 
 public class ConditionChecking {
-    ArrayList<Variable> variables=new ArrayList<>();
+    public ArrayList<Variable> variables=new ArrayList<>();
     public String comparisonSign;
     public void ConditionChecking() {
 
@@ -21,5 +21,6 @@ public class ConditionChecking {
         for(Variable variable:variables){
             System.out.println(variable.variableName+" "+variable.value);
         }
+        System.out.println(variables.get(0).variableName);
     }
 }

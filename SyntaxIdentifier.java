@@ -75,7 +75,7 @@ public class SyntaxIdentifier {
     }
 
     public boolean isComparisonSign(char inputCharacter) {
-        return (inputCharacter=='<' || inputCharacter=='>' || inputCharacter=='=');
+        return (inputCharacter=='<' || inputCharacter=='>' || inputCharacter=='=' || inputCharacter=='!');
     }
 
     public boolean isInt(String statement) {

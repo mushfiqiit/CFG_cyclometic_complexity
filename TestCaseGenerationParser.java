@@ -82,5 +82,6 @@ public class TestCaseGenerationParser {
         for(Variable variable:variables) {
             System.out.println(variable.variableName+" "+variable.value);
         }
+
     }
 }
