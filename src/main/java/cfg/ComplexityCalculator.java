@@ -5,9 +5,20 @@ import java.util.List;
 /** Calculates cyclomatic complexity by counting branching keywords. */
 public final class ComplexityCalculator {
 
+    /** Prevents instantiation; this class only has static methods. */
     private ComplexityCalculator() {
     }
 
+    /**
+     * Counts the {@code if}, {@code else if}, {@code else} and loop lines, prints each count, and
+     * returns their sum plus one.
+     *
+     * <p>{@code else if} lines are counted as {@code else}, so the printed {@code elsifs} count is
+     * always 0. The total is unaffected.
+     *
+     * @param lines the source lines to scan
+     * @return the cyclomatic complexity
+     */
     public static int calculate(List<String> lines) {
         int ifs = 0;
         int elseIfs = 0;

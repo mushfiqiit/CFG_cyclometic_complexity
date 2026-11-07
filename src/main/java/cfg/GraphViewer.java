@@ -25,11 +25,24 @@ public class GraphViewer extends Application {
     // Opening the window
     // ***************************************************************************
 
-    /** Opens the window and blocks until it is closed. */
+    /** Creates the viewer. JavaFX calls this when {@link #show()} launches the window. */
+    public GraphViewer() {
+    }
+
+    /**
+     * Opens the graph window and blocks until it is closed. Can only be called once per program
+     * run.
+     */
     public static void show() {
         launch();
     }
 
+    /**
+     * Builds the scene from the saved graph files and shows it. Called by JavaFX.
+     *
+     * @param stage the window to show the graph in
+     * @throws FileNotFoundException if either graph file is missing
+     */
     @Override
     public void start(Stage stage) throws FileNotFoundException {
         Group root = new Group();
@@ -43,6 +56,12 @@ public class GraphViewer extends Application {
     // Building the scene from the saved graph files
     // ***************************************************************************
 
+    /**
+     * Adds the graph's nodes and edges to the scene.
+     *
+     * @param root the group that holds the scene's contents
+     * @throws FileNotFoundException if either graph file is missing
+     */
     private void initGraph(Group root) throws FileNotFoundException {
         // Each node's text is the line of the edges file at its number, not its source statement.
         List<String> nodeTexts = SourceCodeReader.readLines(GraphData.EDGES_FILE);
@@ -50,6 +69,15 @@ public class GraphViewer extends Application {
         addEdges(root, nodes);
     }
 
+    /**
+     * Adds a node for each reachable entry in the levels file. Each level is drawn as a row, and
+     * nodes on the same level are placed left to right.
+     *
+     * @param root the group that holds the scene's contents
+     * @param nodeTexts the labels shown on double-click, indexed by node number
+     * @return the nodes added, keyed by node number
+     * @throws FileNotFoundException if the levels file is missing
+     */
     private Map<Integer, GraphicNode> addNodes(Group root, List<String> nodeTexts) throws FileNotFoundException {
         Map<Integer, GraphicNode> nodes = new HashMap<>();
         int[] nodesPerLevel = new int[GraphData.MAX_NODES];
@@ -74,6 +102,13 @@ public class GraphViewer extends Application {
         return nodes;
     }
 
+    /**
+     * Adds a line for each entry in the edges file, behind all the nodes.
+     *
+     * @param root the group that holds the scene's contents
+     * @param nodes the nodes to connect, keyed by node number
+     * @throws FileNotFoundException if the edges file is missing
+     */
     private void addEdges(Group root, Map<Integer, GraphicNode> nodes) throws FileNotFoundException {
         try (Scanner edges = new Scanner(new File(GraphData.EDGES_FILE))) {
             while (edges.hasNextInt()) {
