@@ -27,7 +27,12 @@ class ControlFlowGraphTest {
 
     @Test
     void countsEveryEdge() {
-        assertEquals(18, graph.countEdges());
+        assertEquals(19, graph.countEdges());
+    }
+
+    @Test
+    void countsOnlyTheLinesTheRootCanReach() {
+        assertEquals(16, graph.countNodes());
     }
 
     @Test

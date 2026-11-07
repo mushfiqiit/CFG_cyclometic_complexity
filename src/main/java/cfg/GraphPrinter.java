@@ -103,14 +103,13 @@ final class GraphPrinter {
 
     /**
      * Prints the cyclomatic complexity worked out both ways: from the graph as edges - nodes + 2,
-     * and from the decision points as decisions + 1. The node count is the number of source lines
-     * minus one.
+     * and from the decision points as decisions + 1. For well-structured code the two agree.
      *
      * @param graph the graph to measure
      * @param decisions the decision points counted in the source
      */
     static void printComplexity(ControlFlowGraph graph, DecisionCounts decisions) {
-        int nodeCount = graph.getLineCount() - 1;
+        int nodeCount = graph.countNodes();
         int edgeCount = graph.countEdges();
         int fromGraph = edgeCount - nodeCount + 2;
 
@@ -122,7 +121,6 @@ final class GraphPrinter {
         System.out.println("  Decision points: " + String.join(", ",
                 ConsoleText.count(decisions.ifs(), "if", "ifs"),
                 ConsoleText.count(decisions.elseIfs(), "else if", "else ifs"),
-                ConsoleText.count(decisions.elses(), "else", "elses"),
                 ConsoleText.count(decisions.loops(), "loop", "loops")));
     }
 

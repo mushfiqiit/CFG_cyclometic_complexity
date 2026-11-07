@@ -1,7 +1,14 @@
 package cfg;
 
+import java.util.regex.Pattern;
+
 /** Recognizes the kind of C statement on a source line. Whitespace is ignored unless noted. */
 public final class SyntaxIdentifier {
+
+    private static final Pattern WHITESPACE = Pattern.compile("\\s");
+    private static final Pattern ELSE_KEYWORD = Pattern.compile("^\\s*else\\b");
+    private static final Pattern INT_KEYWORD = Pattern.compile("^\\s*int\\s");
+    private static final Pattern FUNCTION_HEADER = Pattern.compile("^\\s*int\\s+\\**\\s*[A-Za-z_]\\w*\\s*\\(");
 
     /** Prevents instantiation; this class only has static methods. */
     private SyntaxIdentifier() {
@@ -32,14 +39,15 @@ public final class SyntaxIdentifier {
     }
 
     /**
-     * Tells whether a line starts with {@code else}. This is also true for {@code else if}, and for
-     * any other line starting with those letters, such as {@code elsewhere = 1;}.
+     * Tells whether a line starts with the {@code else} keyword. This is also true for
+     * {@code else if}, but not for words that merely start with those letters, such as
+     * {@code elsewhere = 1;}.
      *
      * @param statement the source line to check
-     * @return true if the line starts with {@code else}
+     * @return true if the line starts with the keyword {@code else}
      */
     public static boolean isElse(String statement) {
-        return startsWith(statement, "else");
+        return ELSE_KEYWORD.matcher(statement).find();
     }
 
     // ***************************************************************************
@@ -81,27 +89,26 @@ public final class SyntaxIdentifier {
     // ***************************************************************************
 
     /**
-     * Tells whether a line starts with {@code int}, such as an {@code int} declaration.
-     *
-     * <p>Only spaces are ignored here, so a tab-indented declaration does not match.
+     * Tells whether a line declares {@code int} variables, such as {@code int a, b = 2;}. A
+     * function header such as <code>int main(void) {</code> is not a declaration, and neither is a word
+     * that merely starts with {@code int}, such as {@code integer z;}.
      *
      * @param statement the source line to check
-     * @return true if the line starts with {@code int}
+     * @return true if the line starts with the keyword {@code int} and does not declare a function
      */
-    public static boolean isInt(String statement) {
-        return statement.replace(" ", "").startsWith("int");
+    public static boolean isIntDeclaration(String statement) {
+        return INT_KEYWORD.matcher(statement).find() && !FUNCTION_HEADER.matcher(statement).find();
     }
 
     /**
      * Tells whether the line closes a block.
      *
      * @param statement the source line to check
-     * @return true if the line ends with <code>}</code>
-     * @throws StringIndexOutOfBoundsException if the line is blank
+     * @return true if the line ends with <code>}</code>; false for a blank line
      */
     public static boolean endsBlock(String statement) {
         String compact = removeWhitespace(statement);
-        return compact.charAt(compact.length() - 1) == '}';
+        return !compact.isEmpty() && compact.charAt(compact.length() - 1) == '}';
     }
 
     // ***************************************************************************
@@ -140,6 +147,6 @@ public final class SyntaxIdentifier {
      * @return the line without spaces, tabs or other whitespace
      */
     private static String removeWhitespace(String statement) {
-        return statement.replaceAll("\\s", "");
+        return WHITESPACE.matcher(statement).replaceAll("");
     }
 }

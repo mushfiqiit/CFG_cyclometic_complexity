@@ -15,6 +15,7 @@ public final class ControlFlowGraph {
 
     private final Node root;
     private final List<String> lines;
+    private final int nodeCount;
     private final int[][] adjacency = new int[GraphData.MAX_NODES][GraphData.MAX_NODES];
 
     /**
@@ -28,7 +29,15 @@ public final class ControlFlowGraph {
     ControlFlowGraph(Node root, List<String> lines) {
         this.root = root;
         this.lines = lines;
-        fillAdjacency(root, new boolean[lines.size()]);
+        boolean[] visited = new boolean[lines.size()];
+        fillAdjacency(root, visited);
+        int reached = 0;
+        for (boolean nodeVisited : visited) {
+            if (nodeVisited) {
+                reached++;
+            }
+        }
+        this.nodeCount = reached;
     }
 
     /**
@@ -85,6 +94,15 @@ public final class ControlFlowGraph {
      */
     public boolean hasEdge(int from, int to) {
         return adjacency[from][to] == 1;
+    }
+
+    /**
+     * Counts the nodes in the graph: the lines the root can reach, including the root itself.
+     *
+     * @return the number of nodes
+     */
+    public int countNodes() {
+        return nodeCount;
     }
 
     /**

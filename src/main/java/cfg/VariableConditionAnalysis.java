@@ -2,14 +2,18 @@ package cfg;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Runs the test case data option: lists the {@code int} variables declared in C source lines, each
- * with a test value of 0, and the conditions of their {@code if}, {@code else if} and
- * {@code while} statements.
+ * Runs the test case data option: lists the {@code int} variables declared in C source lines,
+ * including those declared in a {@code for} loop, each with a test value of 0, and the conditions
+ * of their {@code if}, {@code else if} and {@code while} statements.
  */
 public final class VariableConditionAnalysis {
+
+    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_]\\w*");
 
     /** A condition and the 1-based number of the line it was found on. */
     private record FoundCondition(int lineNumber, Condition condition) {
@@ -47,7 +51,9 @@ public final class VariableConditionAnalysis {
             String line = lines.get(index);
             if (isConditional(line)) {
                 conditions.add(new FoundCondition(index + 1, Condition.from(line)));
-            } else if (SyntaxIdentifier.isInt(line)) {
+            } else if (SyntaxIdentifier.isFor(line)) {
+                parseForInitializer(line);
+            } else if (SyntaxIdentifier.isIntDeclaration(line)) {
                 parseDeclaration(line);
             }
         }
@@ -69,34 +75,83 @@ public final class VariableConditionAnalysis {
     // ***************************************************************************
 
     /**
-     * Adds each variable name in an {@code int} declaration to the variable list. Names are
-     * separated by commas or spaces, and {@code ;} is ignored.
+     * Adds the variables declared in a {@code for} loop's initializer, such as {@code i} in
+     * {@code for (int i = 0; i < n; i++)}.
      *
-     * @param line an {@code int} declaration line
+     * @param line a {@code for} line
      */
-    private void parseDeclaration(String line) {
-        StringBuilder token = new StringBuilder();
-
-        for (char character : line.toCharArray()) {
-            if (character == ',' || character == ' ') {
-                addVariable(token.toString());
-                token.setLength(0);
-            } else if (character != ';') {
-                token.append(character);
-            }
+    private void parseForInitializer(String line) {
+        int open = line.indexOf('(');
+        int end = line.indexOf(';', open + 1);
+        if (open < 0 || end < 0) {
+            return;
         }
-        addVariable(token.toString());
+        String initializer = line.substring(open + 1, end);
+        if (SyntaxIdentifier.isIntDeclaration(initializer)) {
+            parseDeclaration(initializer);
+        }
     }
 
     /**
-     * Adds a declared name to the variable list, skipping the {@code int} keyword and empty names.
+     * Adds the name of each variable in an {@code int} declaration, such as {@code a} and
+     * {@code b} in {@code int a = 5, b;}. Initial values, pointer stars and array sizes are not
+     * part of a name.
      *
-     * @param name a token from a declaration line
+     * @param declaration text that starts with the keyword {@code int}
      */
-    private void addVariable(String name) {
-        if (!name.equals("int") && !name.isEmpty()) {
-            variables.add(Variable.from(name));
+    private void parseDeclaration(String declaration) {
+        String declarators = declaration.strip().substring("int".length());
+        for (String declarator : splitDeclarators(declarators)) {
+            String name = declaredName(declarator);
+            if (!name.isEmpty()) {
+                variables.add(Variable.from(name));
+            }
         }
+    }
+
+    /**
+     * Splits the text after {@code int} at the commas between declarators, stopping at the
+     * {@code ;} that ends the declaration. Commas inside parentheses, brackets or braces, as in
+     * {@code a[2] = {1, 2}}, do not split.
+     *
+     * @param declarators the text after the {@code int} keyword
+     * @return each declarator's text
+     */
+    private static List<String> splitDeclarators(String declarators) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int depth = 0;
+        for (char character : declarators.toCharArray()) {
+            if (depth == 0 && character == ';') {
+                break;
+            }
+            if (depth == 0 && character == ',') {
+                parts.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+            if ("([{".indexOf(character) >= 0) {
+                depth++;
+            } else if (")]}".indexOf(character) >= 0 && depth > 0) {
+                depth--;
+            }
+            current.append(character);
+        }
+        parts.add(current.toString());
+        return parts;
+    }
+
+    /**
+     * Extracts the variable name from one declarator, such as {@code x} from {@code *x = 5} or
+     * {@code arr} from {@code arr[10]}.
+     *
+     * @param declarator one comma-separated part of a declaration
+     * @return the name, or an empty string if the declarator has none
+     */
+    private static String declaredName(String declarator) {
+        String target = declarator.split("=", 2)[0].strip().replaceFirst("^\\*+\\s*", "");
+        Matcher name = IDENTIFIER.matcher(target);
+        return name.lookingAt() ? name.group() : "";
     }
 
     // ***************************************************************************

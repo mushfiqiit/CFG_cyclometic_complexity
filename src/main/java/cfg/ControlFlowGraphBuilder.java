@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@link ControlFlowGraph} from C source lines, with one node per line.
+ * Builds a {@link ControlFlowGraph} from C source lines, with one node per non-blank line.
  *
- * <p>Create a builder with {@link #from(List)}, which locates the root, then call
- * {@link #build()} once to link the remaining lines.
+ * <p>The source is expected to put each statement on its own line, open each block at the end
+ * of its {@code if}, {@code else if}, {@code else}, {@code for} or {@code while} line, and close
+ * it with a <code>}</code> line. Create a builder with {@link #from(List)}, which locates the root,
+ * then call {@link #build()} once to link the remaining lines.
  *
  * @author sikde
  */
@@ -16,6 +18,7 @@ public final class ControlFlowGraphBuilder {
     private final List<String> lines;
     private final Node root;
     private int nextLine;
+    private boolean built;
 
     /**
      * Creates a builder whose root is the given line. Use {@link #from(List)} to create builders.
@@ -34,13 +37,12 @@ public final class ControlFlowGraphBuilder {
     // ***************************************************************************
 
     /**
-     * Creates a builder for a source file, skipping the preamble lines and using the first line
-     * after them as the root. That line is normally the {@code main} function's opening line.
+     * Creates a builder for a source file, skipping blank and preamble lines and using the first
+     * line after them as the root. That line is normally the {@code main} function's opening line.
      *
      * @param lines the source lines; each line's index becomes its node number
      * @return a builder that has found the root but not linked any other lines yet
-     * @throws IndexOutOfBoundsException if every line is preamble
-     * @throws StringIndexOutOfBoundsException if a preamble line is empty
+     * @throws IndexOutOfBoundsException if every line is blank or preamble
      */
     public static ControlFlowGraphBuilder from(List<String> lines) {
         int rootLine = 0;
@@ -51,15 +53,14 @@ public final class ControlFlowGraphBuilder {
     }
 
     /**
-     * Tells whether a line comes before the code to graph: a line containing {@code intmain()},
-     * or one starting with {@code #} or {@code /}.
+     * Tells whether a line comes before the code to graph: a blank line, a line containing
+     * {@code intmain()}, or one starting with {@code #} or {@code /}.
      *
      * @param line the source line to check
      * @return true if the line is part of the preamble
-     * @throws StringIndexOutOfBoundsException if the line is empty
      */
     private static boolean isPreamble(String line) {
-        return line.contains("intmain(){") || line.charAt(0) == '#' || line.charAt(0) == '/';
+        return line.isBlank() || line.contains("intmain(){") || line.charAt(0) == '#' || line.charAt(0) == '/';
     }
 
     // ***************************************************************************
@@ -76,90 +77,133 @@ public final class ControlFlowGraphBuilder {
     }
 
     /**
-     * Links every line after the root and returns the finished graph. Call this only once.
+     * Links every line of the root's block and returns the finished graph.
      *
      * @return the control flow graph
-     * @throws StringIndexOutOfBoundsException if a line after the root is empty
+     * @throws IllegalStateException if called more than once
      * @throws ArrayIndexOutOfBoundsException if a reachable node's number is
      *         {@link GraphData#MAX_NODES} or more
      */
     public ControlFlowGraph build() {
-        buildBranch(root, false);
+        if (built) {
+            throw new IllegalStateException("build() can only be called once");
+        }
+        built = true;
+        buildBlock(List.of(root));
         return new ControlFlowGraph(root, lines);
     }
 
     /**
-     * Links the lines after {@code branchRoot} until its block closes.
+     * Links the statements of a block, starting at the next line, until the line that closes the
+     * block or the end of the file. Blank lines are skipped.
      *
-     * @param branchRoot the line that opens the block
-     * @param inLoop whether {@code branchRoot} is a loop, so the last line links back to it
-     * @return the node that closes the block, or null if the file ends first
+     * @param entries the nodes that lead into the block's first statement
+     * @return the nodes that lead out of the block: its closing line, or the last statements if
+     *         the file ends before the block is closed
      */
-    private Node buildBranch(Node branchRoot, boolean inLoop) {
-        Node previous = branchRoot;
-        List<Node> openBranchEnds = new ArrayList<>();
-
+    private List<Node> buildBlock(List<Node> entries) {
+        List<Node> previous = entries;
         while (nextLine < lines.size()) {
-            Node node = new Node(nextLine, lines.get(nextLine));
-            String statement = node.getStatement();
-            nextLine++;
-
-            if (SyntaxIdentifier.isElse(statement)) {
-                previous.addChild(node);
-                openBranchEnds.add(buildBranch(node, false));
-            } else if (SyntaxIdentifier.isIf(statement)) {
-                linkFirstOpenBranch(openBranchEnds, previous, node);
-                openBranchEnds.add(buildBranch(node, false));
+            String statement = lines.get(nextLine);
+            if (statement.isBlank()) {
+                nextLine++;
+            } else if (SyntaxIdentifier.endsBlock(statement)) {
+                Node closing = readNode();
+                link(previous, closing);
+                return List.of(closing);
+            } else if (SyntaxIdentifier.isIf(statement) || SyntaxIdentifier.isElse(statement)) {
+                previous = buildIfChain(previous);
             } else if (SyntaxIdentifier.isLoop(statement)) {
-                linkFirstOpenBranch(openBranchEnds, previous, node);
-                openBranchEnds.add(node);
-                buildBranch(node, true);
+                previous = buildLoop(previous);
             } else {
-                linkAllOpenBranches(openBranchEnds, previous, node);
-                if (SyntaxIdentifier.endsBlock(statement)) {
-                    if (inLoop) {
-                        node.addChild(branchRoot);
-                    }
-                    return node;
-                }
-                previous = node;
+                Node node = readNode();
+                link(previous, node);
+                previous = List.of(node);
             }
         }
-        return null;
+        return previous;
     }
 
     /**
-     * Links {@code node} after the previous line, or after the first open branch if there are any.
-     * Any other open branches are dropped without being linked.
+     * Links an {@code if} statement with its {@code else if} and {@code else} branches. Each
+     * condition leads to its own block and, when false, to the next branch. If the chain has no
+     * {@code else}, the last condition also leads to the statement after the chain.
      *
-     * @param openBranchEnds the last nodes of branches still waiting for a successor; cleared here
-     * @param previous the line before {@code node}, used when no branch is open
-     * @param node the line to link
+     * @param entries the nodes that lead into the first condition
+     * @return the nodes that lead to the statement after the chain
      */
-    private static void linkFirstOpenBranch(List<Node> openBranchEnds, Node previous, Node node) {
-        if (openBranchEnds.isEmpty()) {
-            previous.addChild(node);
-        } else {
-            openBranchEnds.get(0).addChild(node);
-            openBranchEnds.clear();
+    private List<Node> buildIfChain(List<Node> entries) {
+        Node condition = readNode();
+        link(entries, condition);
+        List<Node> exits = new ArrayList<>(buildBlock(List.of(condition)));
+
+        Node falseBranch = condition;
+        while (falseBranch != null && nextNonBlankIsElse()) {
+            Node branch = readNode();
+            falseBranch.addChild(branch);
+            exits.addAll(buildBlock(List.of(branch)));
+            falseBranch = SyntaxIdentifier.isElseIf(branch.getStatement()) ? branch : null;
         }
+        if (falseBranch != null) {
+            exits.add(falseBranch);
+        }
+        return exits;
     }
 
     /**
-     * Links {@code node} after every open branch, or after the previous line if none is open.
+     * Links a {@code for} or {@code while} loop: the loop leads to its block, the end of the block
+     * leads back to the loop, and the loop leads to the statement after it when it finishes.
      *
-     * @param openBranchEnds the last nodes of branches still waiting for a successor; cleared here
-     * @param previous the line before {@code node}, used when no branch is open
-     * @param node the line to link
+     * @param entries the nodes that lead into the loop
+     * @return the loop node, which leads to the statement after the loop
      */
-    private static void linkAllOpenBranches(List<Node> openBranchEnds, Node previous, Node node) {
-        if (openBranchEnds.isEmpty()) {
-            previous.addChild(node);
-        } else {
-            for (Node branchEnd : openBranchEnds) {
-                branchEnd.addChild(node);
+    private List<Node> buildLoop(List<Node> entries) {
+        Node loop = readNode();
+        link(entries, loop);
+        for (Node bodyExit : buildBlock(List.of(loop))) {
+            if (bodyExit != loop) {
+                bodyExit.addChild(loop);
             }
-            openBranchEnds.clear();
+        }
+        return List.of(loop);
+    }
+
+    // ***************************************************************************
+    // Helpers
+    // ***************************************************************************
+
+    /**
+     * Creates the node for the next line and moves past it.
+     *
+     * @return the new node
+     */
+    private Node readNode() {
+        Node node = new Node(nextLine, lines.get(nextLine));
+        nextLine++;
+        return node;
+    }
+
+    /**
+     * Skips blank lines and tells whether the next line continues an if chain.
+     *
+     * @return true if the next non-blank line starts with {@code else}
+     */
+    private boolean nextNonBlankIsElse() {
+        while (nextLine < lines.size() && lines.get(nextLine).isBlank()) {
+            nextLine++;
+        }
+        return nextLine < lines.size() && SyntaxIdentifier.isElse(lines.get(nextLine));
+    }
+
+    /**
+     * Makes every node in {@code from} lead to {@code to}.
+     *
+     * @param from the nodes to link from
+     * @param to the node to link to
+     */
+    private static void link(List<Node> from, Node to) {
+        for (Node node : from) {
+            node.addChild(to);
         }
     }
 }

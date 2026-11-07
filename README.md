@@ -53,15 +53,17 @@ Conditions to cover
   4    11  a>c        >         a, c
 ```
 
-Option 1 ends with both complexity results:
+Option 1 ends with both complexity results. They are worked out independently, from the graph and from the decision points (`if`, `else if`, `for` and `while`), and they agree for well-structured code:
 
 ```
 Cyclomatic complexity
 ---------------------
-  From the graph:            M = E - N + 2 = 18 - 16 + 2 = 4
+  From the graph:            M = E - N + 2 = 19 - 16 + 2 = 5
   From the decision points:  M = D + 1 = 4 + 1 = 5
-  Decision points: 1 if, 0 else ifs, 2 elses, 1 loop
+  Decision points: 1 if, 2 else ifs, 1 loop
 ```
+
+The program expects one statement per line, with each block opened at the end of its `if`, `else`, `for` or `while` line and closed by a `}` on its own line. Blank lines are fine.
 
 Run `./gradlew run --args="--help"` to see the usage message.
 
@@ -73,7 +75,7 @@ Run `./gradlew run --args="--help"` to see the usage message.
 ./gradlew knownBugTest   # runs the tests for known bugs, which fail until those bugs are fixed
 ```
 
-The tests live in `src/test/java` and use JUnit 5. Most of them pin down the program's current behavior, so a change that alters the graph, the counts or the printed reports makes them fail. Tests for bugs that are not fixed yet are tagged `known-bug`; they state the correct behavior, are left out of `./gradlew test`, and run only with `./gradlew knownBugTest`. When a bug is fixed, remove the tag from its test.
+The tests live in `src/test/java` and use JUnit 5. Most of them pin down the program's current behavior, so a change that alters the graph, the counts or the printed reports makes them fail. Tests for bugs that are not fixed yet are tagged `known-bug`; they state the correct behavior, are left out of `./gradlew test`, and run only with `./gradlew knownBugTest`. When a bug is fixed, remove the tag from its test. There are currently no known-bug tests.
 
 The test programs are in `src/test/resources/cfg`. The tests do not use `test.txt`, so you can change it freely. HTML reports are written to `build/reports/tests/`.
 

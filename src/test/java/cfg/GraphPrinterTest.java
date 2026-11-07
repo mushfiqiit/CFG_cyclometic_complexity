@@ -36,17 +36,17 @@ class GraphPrinterTest {
 
         assertEquals(String.join("\n",
                 "  Line  Statement                       Next lines",
-                "  ----  ------------------------------  ------------",
+                "  ----  ------------------------------  ----------",
                 "     2  int main(){                     3",
                 "     3  int a, b, c, k;                 4",
-                "     4  while(k>0){                     5, 8, 11, 16",
-                "     5  if(a>b){                        6",
+                "     4  while(k>0){                     5, 16",
+                "     5  if(a>b){                        6, 8",
                 "     6  printf(\"a is bigger than b\");   7",
                 "     7  }                               14",
-                "     8  else if(a==b){                  9",
+                "     8  else if(a==b){                  9, 11",
                 "     9  printf(\"a and b is equal\");     10",
                 "    10  }                               14",
-                "    11  else if(a>c) {                  12",
+                "    11  else if(a>c) {                  12, 14",
                 "    12  printf(\"a is smaller than b\");  13",
                 "    13  }                               14",
                 "    14  k--;                            15",
@@ -60,7 +60,8 @@ class GraphPrinterTest {
         List<String> lines = collapsedLines(captureOutput(() -> GraphPrinter.printGraph(graph)));
 
         assertTrue(lines.contains("Line 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"));
-        assertTrue(lines.contains("4 . . . 1 . . 1 . . 1 . . . . 1 ."));
+        assertTrue(lines.contains("4 . . . 1 . . . . . . . . . . 1 ."));
+        assertTrue(lines.contains("5 . . . . 1 . 1 . . . . . . . . ."));
         assertTrue(lines.contains("15 . . 1 . . . . . . . . . . . . ."));
     }
 
@@ -73,9 +74,21 @@ class GraphPrinterTest {
                 "",
                 "Cyclomatic complexity",
                 "---------------------",
-                "  From the graph:            M = E - N + 2 = 18 - 16 + 2 = 4",
+                "  From the graph:            M = E - N + 2 = 19 - 16 + 2 = 5",
                 "  From the decision points:  M = D + 1 = 4 + 1 = 5",
-                "  Decision points: 1 if, 0 else ifs, 2 elses, 1 loop",
+                "  Decision points: 1 if, 2 else ifs, 1 loop",
                 ""), output);
+    }
+
+    @Test
+    void graphFormulaCountsTheNodesInTheGraphNotTheLines() {
+        List<String> lines = program("two-preamble-lines.c");
+        ControlFlowGraph graph = build(lines);
+
+        String output = captureOutput(() ->
+                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+
+        // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
+        assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
     }
 }

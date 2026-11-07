@@ -2,7 +2,6 @@ package cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -29,9 +28,10 @@ class SyntaxIdentifierTest {
     @CsvSource(delimiter = '|', value = {
         "else{          | true  | false",
         "else if(a==b){ | true  | true",
-        "elsewhere=1;   | true  | false",
+        "  else {       | true  | false",
+        "elsewhere=1;   | false | false",
         "if(a){         | false | false"})
-    void elseAlsoMatchesElseIfAndWordsStartingWithElse(String line, boolean isElse, boolean isElseIf) {
+    void elseIsAKeywordThatAlsoStartsElseIf(String line, boolean isElse, boolean isElseIf) {
         assertEquals(isElse, SyntaxIdentifier.isElse(line));
         assertEquals(isElseIf, SyntaxIdentifier.isElseIf(line));
     }
@@ -48,10 +48,16 @@ class SyntaxIdentifierTest {
         assertEquals(isWhile || isFor, SyntaxIdentifier.isLoop(line));
     }
 
-    @Test
-    void intIgnoresSpacesButNotTabs() {
-        assertTrue(SyntaxIdentifier.isInt("    int a, b;"));
-        assertFalse(SyntaxIdentifier.isInt("\tint main(){"));
+    @ParameterizedTest
+    @ValueSource(strings = {"int a;", "    int a, b;", "\tint tabbed;", "int x = 5, y;", "int *p;", "int arr[3];", "  int y, "})
+    void recognizesIntDeclarations(String line) {
+        assertTrue(SyntaxIdentifier.isIntDeclaration(line));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"int main(void) {", "\tint main(){", "int f(int x);", "integer z;", "printf(\"int\");", "a = 1;"})
+    void functionHeadersAndOtherLinesAreNotIntDeclarations(String line) {
+        assertFalse(SyntaxIdentifier.isIntDeclaration(line));
     }
 
     @Test
@@ -61,8 +67,9 @@ class SyntaxIdentifierTest {
     }
 
     @Test
-    void endsBlockThrowsOnABlankLine() {
-        assertThrows(StringIndexOutOfBoundsException.class, () -> SyntaxIdentifier.endsBlock("   "));
+    void blankLineDoesNotEndABlock() {
+        assertFalse(SyntaxIdentifier.endsBlock("   "));
+        assertFalse(SyntaxIdentifier.endsBlock(""));
     }
 
     @ParameterizedTest

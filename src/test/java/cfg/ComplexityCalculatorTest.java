@@ -9,16 +9,11 @@ import org.junit.jupiter.api.Test;
 /** Pins down how decision points are counted. */
 class ComplexityCalculatorTest {
 
-    /**
-     * Known bug, pinned as current behavior: {@code else if} lines are counted as {@code else}, so
-     * the sample's two {@code else if} lines appear as elses. Update this test when the bug is
-     * fixed.
-     */
     @Test
-    void sampleProgramCountsElseIfAsElse() {
+    void sampleProgramCountsEachKindOfDecision() {
         DecisionCounts counts = ComplexityCalculator.countDecisions(program("sample.c"));
 
-        assertEquals(new DecisionCounts(1, 0, 2, 1), counts);
+        assertEquals(new DecisionCounts(1, 2, 1), counts);
         assertEquals(4, counts.total());
         assertEquals(5, counts.complexity());
     }
@@ -28,7 +23,16 @@ class ComplexityCalculatorTest {
         DecisionCounts counts = ComplexityCalculator.countDecisions(List.of(
                 "for(i=0;i<3;i++){", "while (a != b) {", "do {"));
 
-        assertEquals(new DecisionCounts(0, 0, 0, 2), counts);
+        assertEquals(new DecisionCounts(0, 0, 2), counts);
+    }
+
+    @Test
+    void plainElseIsNotADecisionPoint() {
+        DecisionCounts counts = ComplexityCalculator.countDecisions(List.of(
+                "if(a){", "}", "else{", "}", "elsewhere=1;"));
+
+        assertEquals(new DecisionCounts(1, 0, 0), counts);
+        assertEquals(2, counts.complexity());
     }
 
     @Test
