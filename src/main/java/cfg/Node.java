@@ -1,36 +1,37 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package cfg;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
+ * A control flow graph node: one source line and the nodes that can run after it.
  *
  * @author sikde
  */
 public class Node {
-    int nodeNumber;
-    String Statement;
-    ArrayList<Node>parents = new ArrayList<>();
-    ArrayList<Node>childs = new ArrayList<>();
-    
-    public Node(int nodeNo, String nodeStatement){
-        this.nodeNumber = nodeNo;
-        this.Statement = nodeStatement;
+
+    private final int number;
+    private final String statement;
+    private final List<Node> children = new ArrayList<>();
+
+    public Node(int number, String statement) {
+        this.number = number;
+        this.statement = statement;
     }
-    
-    public void setParent(Node pr){
-        this.parents.add(pr);
+
+    public int getNumber() {
+        return number;
     }
-    public void setChild(Node pr){
-        this.childs.add(pr);
+
+    public String getStatement() {
+        return statement;
     }
-    
-    
-    
-    
-    
+
+    public List<Node> getChildren() {
+        return children;
+    }
+
+    public void addChild(Node child) {
+        children.add(child);
+    }
 }

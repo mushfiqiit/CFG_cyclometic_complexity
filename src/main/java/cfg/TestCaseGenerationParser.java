@@ -1,87 +1,104 @@
 package cfg;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 
+/** Extracts the declared variables and the branch conditions from C source lines. */
 public class TestCaseGenerationParser {
-    ArrayList<String> Lines=new ArrayList<>();
-    ArrayList<ConditionChecking> conditions=new ArrayList<>();
-    ArrayList<Variable> variables=new ArrayList<>();
-    SyntaxIdentifier checker=new SyntaxIdentifier();
-    HashMap<String, Integer> map= new HashMap<>();
-    public TestCaseGenerationParser(ArrayList<String> lines) {
-        this.Lines=lines;
+
+    private final List<String> lines;
+    private final List<Condition> conditions = new ArrayList<>();
+    private final List<Variable> variables = new ArrayList<>();
+
+    public TestCaseGenerationParser(List<String> lines) {
+        this.lines = lines;
     }
 
     public void start() {
-        for(String line:Lines) {
-            int bracketFlag=0;
-            ConditionChecking temporaryCondition=new ConditionChecking();
-            String variable="";
-            String comparison="";
-            if(checker.isIf(line) || checker.isElseIf(line) || checker.isWhile(line)) {
-                for(int i=0;i<line.length();i++) {
-                    if (bracketFlag == 1 && line.charAt(i)!=')' && line.charAt(i)!='{' && line.charAt(i)!='}') {
-                        if(checker.isComparisonSign(line.charAt(i))) {
-                            comparison=comparison+line.charAt(i);
-                            if(!variable.isEmpty())
-                            {
-                                Variable temporary=new Variable(variable, 0);
-                                temporaryCondition.addVariable(temporary);
-                                variable="";
-                            }
-                        }
-                        else if(line.charAt(i)!=' ') {
-                            variable=variable+line.charAt(i);
-                            if(!comparison.isEmpty()) {
-                                temporaryCondition.setComparisonSign(comparison);
-                                comparison="";
-                            }
-                        }
-                    }
-                    if (line.charAt(i) == '(') bracketFlag = 1;
-                }
-                if(!variable.isEmpty())
-                {
-                    Variable temporary=new Variable(variable, 0);
-                    temporaryCondition.addVariable(temporary);
-                    variable="";
-                }
-                conditions.add(temporaryCondition);
-            }
-            else if(checker.isInt(line)) {
+        for (String line : lines) {
+            if (isConditional(line)) {
+                conditions.add(parseCondition(line));
+            } else if (SyntaxIdentifier.isInt(line)) {
                 System.out.println(line);
-                String temporary="";
-                for(int i=0;i<line.length();i++)
-                {
-                    if(line.charAt(i)==',' || line.charAt(i)==' ')
-                    {
-                        Variable tempVariable=new Variable(temporary);
-                        if(!temporary.equals("int") && !temporary.isEmpty()) {
-                            variables.add(tempVariable);
-                            map.put(temporary, 0);
-                        }
-                        temporary="";
-                    }
-                    else if(line.charAt(i)!=';')
-                    {
-                        temporary=temporary+line.charAt(i);
-                    }
-                }
-                Variable tempVariable=new Variable(temporary);
-                if(!temporary.equals("int")) variables.add(tempVariable);
-                map.put(temporary, 0);
+                parseDeclaration(line);
             }
         }
-        for(ConditionChecking condition:conditions)
-        {
-            System.out.println(condition.comparisonSign);
+        printResults();
+    }
+
+    private static boolean isConditional(String line) {
+        return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElseIf(line) || SyntaxIdentifier.isWhile(line);
+    }
+
+    private static Condition parseCondition(String line) {
+        Condition condition = new Condition();
+        StringBuilder variable = new StringBuilder();
+        StringBuilder comparison = new StringBuilder();
+        boolean insideParentheses = false;
+
+        for (char character : line.toCharArray()) {
+            if (insideParentheses && !isConditionDelimiter(character)) {
+                if (SyntaxIdentifier.isComparisonSign(character)) {
+                    comparison.append(character);
+                    addPendingVariable(condition, variable);
+                } else if (character != ' ') {
+                    variable.append(character);
+                    applyPendingComparison(condition, comparison);
+                }
+            }
+            if (character == '(') {
+                insideParentheses = true;
+            }
+        }
+        addPendingVariable(condition, variable);
+        return condition;
+    }
+
+    private static boolean isConditionDelimiter(char character) {
+        return character == ')' || character == '{' || character == '}';
+    }
+
+    private static void addPendingVariable(Condition condition, StringBuilder variable) {
+        if (variable.length() > 0) {
+            condition.addVariable(new Variable(variable.toString()));
+            variable.setLength(0);
+        }
+    }
+
+    private static void applyPendingComparison(Condition condition, StringBuilder comparison) {
+        if (comparison.length() > 0) {
+            condition.setComparisonSign(comparison.toString());
+            comparison.setLength(0);
+        }
+    }
+
+    private void parseDeclaration(String line) {
+        StringBuilder token = new StringBuilder();
+
+        for (char character : line.toCharArray()) {
+            if (character == ',' || character == ' ') {
+                String name = token.toString();
+                if (!name.equals("int") && !name.isEmpty()) {
+                    variables.add(new Variable(name));
+                }
+                token.setLength(0);
+            } else if (character != ';') {
+                token.append(character);
+            }
+        }
+
+        // Unlike the tokens above, the last one is kept even when it is empty.
+        String lastName = token.toString();
+        if (!lastName.equals("int")) {
+            variables.add(new Variable(lastName));
+        }
+    }
+
+    private void printResults() {
+        for (Condition condition : conditions) {
+            System.out.println(condition.getComparisonSign());
             condition.printVariables();
         }
-
-        for(Variable variable:variables) {
-            System.out.println(variable.variableName+" "+variable.value);
-        }
-
+        variables.forEach(System.out::println);
     }
 }

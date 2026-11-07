@@ -1,15 +1,14 @@
 package cfg;
 
-public class Variable {
-    public String variableName;
-    public int value;
-    public Variable(String VariableName, int Value) {
-        this.variableName=VariableName;
-        this.value=Value;
+/** A variable found in the source code, with its test value. */
+public record Variable(String name, int value) {
+
+    public Variable(String name) {
+        this(name, 0);
     }
 
-    public Variable(String VariableName) {
-        this.variableName=VariableName;
-        this.value=0;
+    @Override
+    public String toString() {
+        return name + " " + value;
     }
 }
