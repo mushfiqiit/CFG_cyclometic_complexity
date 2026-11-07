@@ -9,12 +9,13 @@ package cfg;
 public record Variable(String name, int value) {
 
     /**
-     * Creates a variable with a test value of 0.
+     * Creates a variable that has not been given a test value yet, so its value is 0.
      *
      * @param name the variable's name as written in the source
+     * @return a variable with the given name and a value of 0
      */
-    public Variable(String name) {
-        this(name, 0);
+    public static Variable from(String name) {
+        return new Variable(name, 0);
     }
 
     /**

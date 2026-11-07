@@ -9,18 +9,82 @@ public class Condition {
     private final List<Variable> variables = new ArrayList<>();
     private String comparisonSign;
 
-    /** Creates a condition with no variables and no comparison sign. */
-    public Condition() {
+    /** Creates a condition with no operands and no comparison sign. Use {@link #from(String)}. */
+    private Condition() {
+    }
+
+    // ***************************************************************************
+    // Parsing a condition from a source line
+    // ***************************************************************************
+
+    /**
+     * Parses the operands and comparison operator from the text after the first {@code (} of a
+     * line.
+     *
+     * @param line an {@code if}, {@code else if} or {@code while} line
+     * @return the parsed condition, with no comparison sign if none was found
+     */
+    public static Condition from(String line) {
+        Condition condition = new Condition();
+        StringBuilder variable = new StringBuilder();
+        StringBuilder comparison = new StringBuilder();
+        boolean insideParentheses = false;
+
+        for (char character : line.toCharArray()) {
+            if (insideParentheses && !isConditionDelimiter(character)) {
+                if (SyntaxIdentifier.isComparisonSign(character)) {
+                    comparison.append(character);
+                    condition.addPendingVariable(variable);
+                } else if (character != ' ') {
+                    variable.append(character);
+                    condition.applyPendingComparison(comparison);
+                }
+            }
+            if (character == '(') {
+                insideParentheses = true;
+            }
+        }
+        condition.addPendingVariable(variable);
+        return condition;
     }
 
     /**
-     * Adds an operand of the comparison.
+     * Tells whether a character is skipped when reading a condition.
      *
-     * @param variable the operand, in the order it appears in the condition
+     * @param character the character to check
+     * @return true for {@code )}, <code>{</code> and <code>}</code>
      */
-    public void addVariable(Variable variable) {
-        variables.add(variable);
+    private static boolean isConditionDelimiter(char character) {
+        return character == ')' || character == '{' || character == '}';
     }
+
+    /**
+     * Adds the operand read so far to this condition, then clears it. Does nothing if it is empty.
+     *
+     * @param variable the characters of the operand read so far
+     */
+    private void addPendingVariable(StringBuilder variable) {
+        if (variable.length() > 0) {
+            variables.add(Variable.from(variable.toString()));
+            variable.setLength(0);
+        }
+    }
+
+    /**
+     * Sets the operator read so far on this condition, then clears it. Does nothing if it is empty.
+     *
+     * @param comparison the characters of the operator read so far
+     */
+    private void applyPendingComparison(StringBuilder comparison) {
+        if (comparison.length() > 0) {
+            comparisonSign = comparison.toString();
+            comparison.setLength(0);
+        }
+    }
+
+    // ***************************************************************************
+    // Reading the condition
+    // ***************************************************************************
 
     /**
      * Returns the comparison operator.
@@ -29,15 +93,6 @@ public class Condition {
      */
     public String getComparisonSign() {
         return comparisonSign;
-    }
-
-    /**
-     * Sets the comparison operator.
-     *
-     * @param comparisonSign the operator, such as {@code ">"} or {@code "=="}
-     */
-    public void setComparisonSign(String comparisonSign) {
-        this.comparisonSign = comparisonSign;
     }
 
     /**

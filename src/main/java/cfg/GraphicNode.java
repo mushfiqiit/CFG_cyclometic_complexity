@@ -15,14 +15,15 @@ class GraphicNode extends Button {
     private final String nodeNumber;
 
     /**
-     * Creates a node showing its number, which follows the mouse while dragged.
+     * Creates a node showing its number, which follows the mouse while dragged. Use
+     * {@link #of(double, double, int, String)} to create nodes.
      *
      * @param x horizontal position in the scene
      * @param y vertical position in the scene
      * @param nodeText label shown after a double-click
      * @param nodeNumber label shown at first and after a second double-click
      */
-    GraphicNode(double x, double y, String nodeText, String nodeNumber) {
+    private GraphicNode(double x, double y, String nodeText, String nodeNumber) {
         this.nodeText = nodeText;
         this.nodeNumber = nodeNumber;
 
@@ -40,6 +41,27 @@ class GraphicNode extends Button {
             }
         });
     }
+
+    // ***************************************************************************
+    // Creating nodes
+    // ***************************************************************************
+
+    /**
+     * Creates a node at a position, labelled with its number until it is double-clicked.
+     *
+     * @param x horizontal position in the scene
+     * @param y vertical position in the scene
+     * @param number the node's number, shown first
+     * @param text the label shown after a double-click
+     * @return the new node
+     */
+    static GraphicNode of(double x, double y, int number, String text) {
+        return new GraphicNode(x, y, text, Integer.toString(number));
+    }
+
+    // ***************************************************************************
+    // Handling mouse clicks
+    // ***************************************************************************
 
     /**
      * Tells whether a click was a double-click with the primary mouse button.

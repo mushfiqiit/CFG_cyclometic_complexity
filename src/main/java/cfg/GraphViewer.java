@@ -9,7 +9,6 @@ import java.util.Scanner;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 /** Draws the graph saved by {@link ControlFlowGraph} in a window, one row per level. */
@@ -19,7 +18,6 @@ public class GraphViewer extends Application {
     private static final int WINDOW_HEIGHT = 700;
     private static final int COLUMN_SPACING = 120;
     private static final int ROW_SPACING = 40;
-    private static final int EDGE_WIDTH = 7;
 
     // ***************************************************************************
     // Opening the window
@@ -93,8 +91,8 @@ public class GraphViewer extends Application {
                 }
 
                 int column = nodesPerLevel[level]++;
-                GraphicNode node = new GraphicNode(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
-                        nodeTexts.get(number), Integer.toString(number));
+                GraphicNode node = GraphicNode.of(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
+                        number, nodeTexts.get(number));
                 nodes.put(number, node);
                 root.getChildren().add(node);
             }
@@ -115,9 +113,7 @@ public class GraphViewer extends Application {
                 int source = edges.nextInt();
                 int destination = edges.nextInt();
 
-                Edge edge = new Edge(nodes.get(source), nodes.get(destination));
-                edge.setStroke(Color.BLANCHEDALMOND);
-                edge.setStrokeWidth(EDGE_WIDTH);
+                Edge edge = Edge.of(nodes.get(source), nodes.get(destination));
                 root.getChildren().add(0, edge); // Index 0 keeps edges behind the nodes.
             }
         }

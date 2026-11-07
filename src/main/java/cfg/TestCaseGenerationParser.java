@@ -32,7 +32,7 @@ public class TestCaseGenerationParser {
     public void start() {
         for (String line : lines) {
             if (isConditional(line)) {
-                conditions.add(parseCondition(line));
+                conditions.add(Condition.from(line));
             } else if (SyntaxIdentifier.isInt(line)) {
                 System.out.println(line);
                 parseDeclaration(line);
@@ -40,10 +40,6 @@ public class TestCaseGenerationParser {
         }
         printResults();
     }
-
-    // ***************************************************************************
-    // Parsing conditions
-    // ***************************************************************************
 
     /**
      * Tells whether a line holds a condition to parse.
@@ -54,72 +50,6 @@ public class TestCaseGenerationParser {
      */
     private static boolean isConditional(String line) {
         return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElseIf(line) || SyntaxIdentifier.isWhile(line);
-    }
-
-    /**
-     * Extracts the operands and comparison operator from the text after the first {@code (}.
-     *
-     * @param line an {@code if}, {@code else if} or {@code while} line
-     * @return the parsed condition
-     */
-    private static Condition parseCondition(String line) {
-        Condition condition = new Condition();
-        StringBuilder variable = new StringBuilder();
-        StringBuilder comparison = new StringBuilder();
-        boolean insideParentheses = false;
-
-        for (char character : line.toCharArray()) {
-            if (insideParentheses && !isConditionDelimiter(character)) {
-                if (SyntaxIdentifier.isComparisonSign(character)) {
-                    comparison.append(character);
-                    addPendingVariable(condition, variable);
-                } else if (character != ' ') {
-                    variable.append(character);
-                    applyPendingComparison(condition, comparison);
-                }
-            }
-            if (character == '(') {
-                insideParentheses = true;
-            }
-        }
-        addPendingVariable(condition, variable);
-        return condition;
-    }
-
-    /**
-     * Tells whether a character is skipped when reading a condition.
-     *
-     * @param character the character to check
-     * @return true for {@code )}, <code>{</code> and <code>}</code>
-     */
-    private static boolean isConditionDelimiter(char character) {
-        return character == ')' || character == '{' || character == '}';
-    }
-
-    /**
-     * Adds the operand read so far to the condition, then clears it. Does nothing if it is empty.
-     *
-     * @param condition the condition being parsed
-     * @param variable the characters of the operand read so far
-     */
-    private static void addPendingVariable(Condition condition, StringBuilder variable) {
-        if (variable.length() > 0) {
-            condition.addVariable(new Variable(variable.toString()));
-            variable.setLength(0);
-        }
-    }
-
-    /**
-     * Sets the operator read so far on the condition, then clears it. Does nothing if it is empty.
-     *
-     * @param condition the condition being parsed
-     * @param comparison the characters of the operator read so far
-     */
-    private static void applyPendingComparison(Condition condition, StringBuilder comparison) {
-        if (comparison.length() > 0) {
-            condition.setComparisonSign(comparison.toString());
-            comparison.setLength(0);
-        }
     }
 
     // ***************************************************************************
@@ -139,7 +69,7 @@ public class TestCaseGenerationParser {
             if (character == ',' || character == ' ') {
                 String name = token.toString();
                 if (!name.equals("int") && !name.isEmpty()) {
-                    variables.add(new Variable(name));
+                    variables.add(Variable.from(name));
                 }
                 token.setLength(0);
             } else if (character != ';') {
@@ -150,7 +80,7 @@ public class TestCaseGenerationParser {
         // Unlike the tokens above, the last one is kept even when it is empty.
         String lastName = token.toString();
         if (!lastName.equals("int")) {
-            variables.add(new Variable(lastName));
+            variables.add(Variable.from(lastName));
         }
     }
 
