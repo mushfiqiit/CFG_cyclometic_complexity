@@ -1,6 +1,6 @@
 package cfg;
 
-/** Limits and file names shared by {@link ControlFlowGraph} and {@link GraphViewer}. */
+/** Limits and file names shared by the graph classes, {@link GraphFileWriter} and {@link GraphViewer}. */
 final class GraphData {
 
     /** Largest number of source lines the fixed-size graph arrays can hold. */

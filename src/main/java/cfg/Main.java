@@ -35,7 +35,7 @@ public final class Main {
         if (option == GENERATE_TEST_CASE_OPTION) {
             new TestCaseGenerationParser(lines).start();
         } else {
-            new ControlFlowGraph(lines).analyze();
+            ComplexityAnalysis.run(lines);
         }
     }
 }

@@ -11,7 +11,7 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/** Draws the graph saved by {@link ControlFlowGraph} in a window, one row per level. */
+/** Draws the graph saved by {@link GraphFileWriter} in a window, one row per level. */
 public class GraphViewer extends Application {
 
     private static final int WINDOW_WIDTH = 1500;
