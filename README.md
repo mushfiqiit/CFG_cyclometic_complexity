@@ -65,6 +65,20 @@ Cyclomatic complexity
 
 Run `./gradlew run --args="--help"` to see the usage message.
 
+## Testing
+
+```bash
+./gradlew test           # runs the automated tests
+./gradlew build          # compiles, runs the tests and packages the program
+./gradlew knownBugTest   # runs the tests for known bugs, which fail until those bugs are fixed
+```
+
+The tests live in `src/test/java` and use JUnit 5. Most of them pin down the program's current behavior, so a change that alters the graph, the counts or the printed reports makes them fail. Tests for bugs that are not fixed yet are tagged `known-bug`; they state the correct behavior, are left out of `./gradlew test`, and run only with `./gradlew knownBugTest`. When a bug is fixed, remove the tag from its test.
+
+The test programs are in `src/test/resources/cfg`. The tests do not use `test.txt`, so you can change it freely. HTML reports are written to `build/reports/tests/`.
+
+GitHub Actions runs `./gradlew build` on Linux, macOS and Windows for every push and pull request, and reports the known-bug tests without failing the workflow (`.github/workflows/build.yml`).
+
 ### Running without Gradle
 
 To run the program from any directory, with paths relative to where you are, build a launcher script once. Unlike `./gradlew run`, the script does not download a JDK: it needs Java 17 or newer, found through `JAVA_HOME` or your `PATH`.
