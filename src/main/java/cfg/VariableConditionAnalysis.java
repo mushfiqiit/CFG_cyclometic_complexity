@@ -3,33 +3,44 @@ package cfg;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Extracts the declared variables and the branch conditions from C source lines. */
-public class TestCaseGenerationParser {
+/**
+ * Runs the variables and conditions option: lists the {@code int} variables declared in C source
+ * lines, each with a test value of 0, and the conditions of their {@code if}, {@code else if} and
+ * {@code while} statements.
+ */
+public final class VariableConditionAnalysis {
 
-    private final List<String> lines;
     private final List<Condition> conditions = new ArrayList<>();
     private final List<Variable> variables = new ArrayList<>();
 
-    /**
-     * Creates a parser for a source file. Nothing is parsed until {@link #start()} runs.
-     *
-     * @param lines the source lines to parse
-     */
-    public TestCaseGenerationParser(List<String> lines) {
-        this.lines = lines;
+    /** Creates an empty analysis. Use {@link #run(List)} to analyze a source file. */
+    private VariableConditionAnalysis() {
     }
 
     // ***************************************************************************
-    // Running the parser
+    // Running the analysis
     // ***************************************************************************
 
     /**
-     * Parses every line, printing each {@code int} declaration as it is found, then prints each
-     * condition followed by every declared variable.
+     * Analyzes a source file, printing each {@code int} declaration as it is found, then prints
+     * each condition followed by every declared variable.
      *
+     * @param lines the source lines to analyze
      * @throws IndexOutOfBoundsException if a condition has no operands, such as {@code if()}
      */
-    public void start() {
+    public static void run(List<String> lines) {
+        VariableConditionAnalysis analysis = new VariableConditionAnalysis();
+        analysis.collect(lines);
+        analysis.printResults();
+    }
+
+    /**
+     * Collects the conditions and declared variables from every line, printing each {@code int}
+     * declaration as it is found.
+     *
+     * @param lines the source lines to scan
+     */
+    private void collect(List<String> lines) {
         for (String line : lines) {
             if (isConditional(line)) {
                 conditions.add(Condition.from(line));
@@ -38,7 +49,6 @@ public class TestCaseGenerationParser {
                 parseDeclaration(line);
             }
         }
-        printResults();
     }
 
     /**

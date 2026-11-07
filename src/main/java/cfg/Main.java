@@ -14,7 +14,8 @@ import java.util.Scanner;
 public final class Main {
 
     private static final String DEFAULT_SOURCE_FILE = "test.txt";
-    private static final int GENERATE_TEST_CASE_OPTION = 2;
+    /** Menu option that lists variables and conditions. The menu still labels it "Generate Testcase". */
+    private static final int VARIABLE_CONDITION_OPTION = 2;
 
     private static final int EXIT_UNREADABLE_FILE = 1;
     private static final int EXIT_USAGE_ERROR = 2;
@@ -35,7 +36,7 @@ public final class Main {
 
     /**
      * Reads the source file named on the command line, or {@code test.txt} if none is given, then
-     * reads a menu option from standard input. Option 2 generates test case data; any other number
+     * reads a menu option from standard input. Option 2 lists variables and conditions; any other number
      * builds the control flow graph.
      *
      * <p>Exits with status 2 for more than one argument or an unknown option, and with status 1 if
@@ -65,8 +66,8 @@ public final class Main {
         System.out.println("Enter option: 1.Cyclomatic Complexity 2. Generate Testcase");
         int option = new Scanner(System.in).nextInt();
 
-        if (option == GENERATE_TEST_CASE_OPTION) {
-            new TestCaseGenerationParser(lines).start();
+        if (option == VARIABLE_CONDITION_OPTION) {
+            VariableConditionAnalysis.run(lines);
         } else {
             ComplexityAnalysis.run(lines);
         }
