@@ -21,6 +21,10 @@ public class GraphViewer extends Application {
     private static final int ROW_SPACING = 40;
     private static final int EDGE_WIDTH = 7;
 
+    // ***************************************************************************
+    // Opening the window
+    // ***************************************************************************
+
     /** Opens the window and blocks until it is closed. */
     public static void show() {
         launch();
@@ -34,6 +38,10 @@ public class GraphViewer extends Application {
         stage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
         stage.show();
     }
+
+    // ***************************************************************************
+    // Building the scene from the saved graph files
+    // ***************************************************************************
 
     private void initGraph(Group root) throws FileNotFoundException {
         // Each node's text is the line of the edges file at its number, not its source statement.

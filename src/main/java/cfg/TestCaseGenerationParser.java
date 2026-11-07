@@ -14,6 +14,10 @@ public class TestCaseGenerationParser {
         this.lines = lines;
     }
 
+    // ***************************************************************************
+    // Running the parser
+    // ***************************************************************************
+
     public void start() {
         for (String line : lines) {
             if (isConditional(line)) {
@@ -25,6 +29,10 @@ public class TestCaseGenerationParser {
         }
         printResults();
     }
+
+    // ***************************************************************************
+    // Parsing conditions
+    // ***************************************************************************
 
     private static boolean isConditional(String line) {
         return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElseIf(line) || SyntaxIdentifier.isWhile(line);
@@ -72,6 +80,10 @@ public class TestCaseGenerationParser {
         }
     }
 
+    // ***************************************************************************
+    // Parsing declarations
+    // ***************************************************************************
+
     private void parseDeclaration(String line) {
         StringBuilder token = new StringBuilder();
 
@@ -93,6 +105,10 @@ public class TestCaseGenerationParser {
             variables.add(new Variable(lastName));
         }
     }
+
+    // ***************************************************************************
+    // Printing results
+    // ***************************************************************************
 
     private void printResults() {
         for (Condition condition : conditions) {

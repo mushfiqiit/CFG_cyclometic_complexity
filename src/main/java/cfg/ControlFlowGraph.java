@@ -25,6 +25,10 @@ public class ControlFlowGraph {
         this.visited = new boolean[lines.size()];
     }
 
+    // ***************************************************************************
+    // Running the analysis
+    // ***************************************************************************
+
     public void analyze() throws IOException {
         Node root = findRoot();
         System.out.println("\n\n\nroot node no: " + root.getNumber() + "\n"
@@ -39,6 +43,10 @@ public class ControlFlowGraph {
         System.out.println("Cyclometic complexity is " + ComplexityCalculator.calculate(lines));
         GraphViewer.show();
     }
+
+    // ***************************************************************************
+    // Building the graph from source lines
+    // ***************************************************************************
 
     private Node findRoot() {
         while (isPreamble(lines.get(nextLine))) {
@@ -114,6 +122,10 @@ public class ControlFlowGraph {
         }
     }
 
+    // ***************************************************************************
+    // Traversing the graph
+    // ***************************************************************************
+
     /** Records every edge reachable from {@code node} with a depth-first traversal. */
     private void fillAdjacency(Node node) {
         visited[node.getNumber()] = true;
@@ -148,6 +160,30 @@ public class ControlFlowGraph {
         return levels;
     }
 
+    // ***************************************************************************
+    // Querying the adjacency matrix
+    // ***************************************************************************
+
+    private boolean hasEdge(int from, int to) {
+        return adjacency[from][to] == 1;
+    }
+
+    private int countEdges() {
+        int edgeCount = 0;
+        for (int from = 0; from < lines.size(); from++) {
+            for (int to = 0; to < lines.size(); to++) {
+                if (hasEdge(from, to)) {
+                    edgeCount++;
+                }
+            }
+        }
+        return edgeCount;
+    }
+
+    // ***************************************************************************
+    // Saving the graph to files
+    // ***************************************************************************
+
     private void saveLevels(int[] levels) throws IOException {
         try (FileWriter writer = new FileWriter(GraphData.LEVELS_FILE)) {
             writer.write(lines.size() + "\n");
@@ -168,6 +204,10 @@ public class ControlFlowGraph {
             }
         }
     }
+
+    // ***************************************************************************
+    // Printing the graph to the console
+    // ***************************************************************************
 
     private void printGraph() {
         printAdjacencyList();
@@ -207,21 +247,5 @@ public class ControlFlowGraph {
         System.out.println("Edges " + nodeCount);
         System.out.println("Verteces " + edgeCount);
         System.out.println("Cyclometic complexity using cfg is " + (edgeCount - nodeCount + 2));
-    }
-
-    private int countEdges() {
-        int edgeCount = 0;
-        for (int from = 0; from < lines.size(); from++) {
-            for (int to = 0; to < lines.size(); to++) {
-                if (hasEdge(from, to)) {
-                    edgeCount++;
-                }
-            }
-        }
-        return edgeCount;
-    }
-
-    private boolean hasEdge(int from, int to) {
-        return adjacency[from][to] == 1;
     }
 }
