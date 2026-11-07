@@ -56,15 +56,6 @@ public final class ControlFlowGraph {
     // ***************************************************************************
 
     /**
-     * Returns the node the graph starts from.
-     *
-     * @return the root node
-     */
-    public Node getRoot() {
-        return root;
-    }
-
-    /**
      * Returns the number of lines in the source file. Node numbers range from 0 to one less than
      * this.
      *
