@@ -1,17 +1,14 @@
 package cfg;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
+import java.util.Objects;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/** Draws the graph saved by {@link GraphFileWriter} in a window, one row per level. */
+/** Draws a {@link ControlFlowGraph} in a window, one row per level. */
 public class GraphViewer extends Application {
 
     private static final int WINDOW_WIDTH = 1500;
@@ -19,30 +16,43 @@ public class GraphViewer extends Application {
     private static final int COLUMN_SPACING = 120;
     private static final int ROW_SPACING = 40;
 
+    /**
+     * The graph to draw. JavaFX creates the viewer itself through its no-argument constructor, so
+     * {@link #show(ControlFlowGraph)} hands the graph over here before launching.
+     */
+    private static volatile ControlFlowGraph graphToShow;
+
     // ***************************************************************************
     // Opening the window
     // ***************************************************************************
 
-    /** Creates the viewer. JavaFX calls this when {@link #show()} launches the window. */
+    /**
+     * Creates the viewer. JavaFX calls this when {@link #show(ControlFlowGraph)} launches the
+     * window.
+     */
     public GraphViewer() {
     }
 
     /**
-     * Opens the graph window and blocks until it is closed. Can only be called once per program
-     * run.
+     * Opens a window showing the graph and blocks until it is closed. Can only be called once per
+     * program run, because JavaFX can only be launched once.
+     *
+     * @param graph the graph to draw
+     * @throws NullPointerException if {@code graph} is null
      */
-    public static void show() {
+    public static void show(ControlFlowGraph graph) {
+        graphToShow = Objects.requireNonNull(graph, "graph");
         launch();
     }
 
     /**
-     * Builds the scene from the saved graph files and shows it. Called by JavaFX.
+     * Builds the scene from the graph passed to {@link #show(ControlFlowGraph)} and shows it.
+     * Called by JavaFX.
      *
      * @param stage the window to show the graph in
-     * @throws FileNotFoundException if either graph file is missing
      */
     @Override
-    public void start(Stage stage) throws FileNotFoundException {
+    public void start(Stage stage) {
         Group root = new Group();
         initGraph(root);
 
@@ -51,70 +61,63 @@ public class GraphViewer extends Application {
     }
 
     // ***************************************************************************
-    // Building the scene from the saved graph files
+    // Building the scene from the graph
     // ***************************************************************************
 
     /**
      * Adds the graph's nodes and edges to the scene.
      *
      * @param root the group that holds the scene's contents
-     * @throws FileNotFoundException if either graph file is missing
      */
-    private void initGraph(Group root) throws FileNotFoundException {
-        // Each node's text is the line of the edges file at its number, not its source statement.
-        List<String> nodeTexts = SourceCodeReader.readLines(GraphData.EDGES_FILE);
-        Map<Integer, GraphicNode> nodes = addNodes(root, nodeTexts);
-        addEdges(root, nodes);
+    private void initGraph(Group root) {
+        ControlFlowGraph graph = graphToShow;
+        Map<Integer, GraphicNode> nodes = addNodes(root, graph);
+        addEdges(root, graph, nodes);
     }
 
     /**
-     * Adds a node for each reachable entry in the levels file. Each level is drawn as a row, and
-     * nodes on the same level are placed left to right.
+     * Adds a node for each node the root can reach. Each level is drawn as a row, and nodes on the
+     * same level are placed left to right in order of node number. Double-clicking a node shows
+     * its source line.
      *
      * @param root the group that holds the scene's contents
-     * @param nodeTexts the labels shown on double-click, indexed by node number
+     * @param graph the graph to draw
      * @return the nodes added, keyed by node number
-     * @throws FileNotFoundException if the levels file is missing
      */
-    private Map<Integer, GraphicNode> addNodes(Group root, List<String> nodeTexts) throws FileNotFoundException {
+    private Map<Integer, GraphicNode> addNodes(Group root, ControlFlowGraph graph) {
         Map<Integer, GraphicNode> nodes = new HashMap<>();
+        int[] levels = graph.computeLevels();
         int[] nodesPerLevel = new int[GraphData.MAX_NODES];
 
-        try (Scanner levels = new Scanner(new File(GraphData.LEVELS_FILE))) {
-            levels.nextInt(); // Skips the node count at the top of the file.
-
-            while (levels.hasNextInt()) {
-                int number = levels.nextInt();
-                int level = levels.nextInt();
-                if (level >= GraphData.UNREACHABLE_LEVEL) {
-                    continue;
-                }
-
-                int column = nodesPerLevel[level]++;
-                GraphicNode node = GraphicNode.of(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
-                        number, nodeTexts.get(number));
-                nodes.put(number, node);
-                root.getChildren().add(node);
+        for (int number = 0; number < graph.getLineCount(); number++) {
+            int level = levels[number];
+            if (level >= GraphData.UNREACHABLE_LEVEL) {
+                continue;
             }
+
+            int column = nodesPerLevel[level]++;
+            GraphicNode node = GraphicNode.of(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
+                    number, graph.getStatement(number).strip());
+            nodes.put(number, node);
+            root.getChildren().add(node);
         }
         return nodes;
     }
 
     /**
-     * Adds a line for each entry in the edges file, behind all the nodes.
+     * Adds a line for each edge in the graph, behind all the nodes.
      *
      * @param root the group that holds the scene's contents
+     * @param graph the graph to draw
      * @param nodes the nodes to connect, keyed by node number
-     * @throws FileNotFoundException if the edges file is missing
      */
-    private void addEdges(Group root, Map<Integer, GraphicNode> nodes) throws FileNotFoundException {
-        try (Scanner edges = new Scanner(new File(GraphData.EDGES_FILE))) {
-            while (edges.hasNextInt()) {
-                int source = edges.nextInt();
-                int destination = edges.nextInt();
-
-                Edge edge = Edge.of(nodes.get(source), nodes.get(destination));
-                root.getChildren().add(0, edge); // Index 0 keeps edges behind the nodes.
+    private void addEdges(Group root, ControlFlowGraph graph, Map<Integer, GraphicNode> nodes) {
+        for (int from = 0; from < graph.getLineCount(); from++) {
+            for (int to = 0; to < graph.getLineCount(); to++) {
+                if (graph.hasEdge(from, to)) {
+                    Edge edge = Edge.of(nodes.get(from), nodes.get(to));
+                    root.getChildren().add(0, edge); // Index 0 keeps edges behind the nodes.
+                }
             }
         }
     }

@@ -85,7 +85,7 @@ public final class ControlFlowGraphBuilder {
      */
     public ControlFlowGraph build() {
         buildBranch(root, false);
-        return new ControlFlowGraph(root, lines.size());
+        return new ControlFlowGraph(root, lines);
     }
 
     /**

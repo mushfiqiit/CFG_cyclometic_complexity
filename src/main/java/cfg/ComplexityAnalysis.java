@@ -1,10 +1,9 @@
 package cfg;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
- * Runs the cyclomatic complexity option: builds the control flow graph, saves and prints it,
+ * Runs the cyclomatic complexity option: builds the control flow graph, prints it,
  * prints both complexity results, then shows the graph in a window.
  */
 public final class ComplexityAnalysis {
@@ -21,18 +20,15 @@ public final class ComplexityAnalysis {
      * throw a runtime exception.
      *
      * @param lines the source lines to analyze
-     * @throws IOException if either graph file cannot be written
      */
-    public static void run(List<String> lines) throws IOException {
+    public static void run(List<String> lines) {
         ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(lines);
         GraphPrinter.printRoot(builder.root());
 
         ControlFlowGraph graph = builder.build();
-        GraphFileWriter.saveLevels(graph);
         GraphPrinter.printGraph(graph);
-        GraphFileWriter.saveEdges(graph);
 
         System.out.println("Cyclometic complexity is " + ComplexityCalculator.calculate(lines));
-        GraphViewer.show();
+        GraphViewer.show(graph);
     }
 }

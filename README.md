@@ -11,17 +11,32 @@ macOS and Linux:
 
 ```bash
 ./gradlew build
-./gradlew run --console=plain
+./gradlew run --args="path/to/program.c" --console=plain
 ```
 
 Windows:
 
 ```bat
 gradlew.bat build
-gradlew.bat run --console=plain
+gradlew.bat run --args="path\to\program.c" --console=plain
 ```
 
-`run` analyzes `test.txt` in the project root and asks you to choose an option:
+Pass the C file to analyze with `--args`. Relative paths are resolved from the project root, because that is where Gradle runs the program; use an absolute path for a file elsewhere. Without `--args`, the program analyzes `test.txt` in the project root.
 
-- `1` prints the graph and cyclomatic complexity, then opens the graph window. This rewrites `Edges.txt` and `LeveledNodes.txt`.
+The program then asks you to choose an option:
+
+- `1` prints the graph and cyclomatic complexity, then opens the graph window. Double-click a node to see its source line.
 - `2` prints the variables and conditions it found.
+
+Run `./gradlew run --args="--help"` to see the usage message.
+
+### Running without Gradle
+
+To run the program from any directory, with paths relative to where you are, build a launcher script once. Unlike `./gradlew run`, the script does not download a JDK: it needs Java 17 or newer, found through `JAVA_HOME` or your `PATH`.
+
+```bash
+./gradlew installDist
+build/install/CFG_cyclometic_complexity/bin/CFG_cyclometic_complexity path/to/program.c
+```
+
+On Windows, run `build\install\CFG_cyclometic_complexity\bin\CFG_cyclometic_complexity.bat` instead.

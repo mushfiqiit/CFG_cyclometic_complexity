@@ -2,6 +2,7 @@ package cfg;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Queue;
 
 /**
@@ -13,21 +14,21 @@ import java.util.Queue;
 public final class ControlFlowGraph {
 
     private final Node root;
-    private final int lineCount;
+    private final List<String> lines;
     private final int[][] adjacency = new int[GraphData.MAX_NODES][GraphData.MAX_NODES];
 
     /**
      * Creates a graph from linked nodes and records every edge reachable from the root.
      *
      * @param root the node the graph starts from
-     * @param lineCount number of lines in the source file
+     * @param lines the source lines; each line's index is its node number
      * @throws ArrayIndexOutOfBoundsException if a reachable node's number is
      *         {@link GraphData#MAX_NODES} or more
      */
-    ControlFlowGraph(Node root, int lineCount) {
+    ControlFlowGraph(Node root, List<String> lines) {
         this.root = root;
-        this.lineCount = lineCount;
-        fillAdjacency(root, new boolean[lineCount]);
+        this.lines = lines;
+        fillAdjacency(root, new boolean[lines.size()]);
     }
 
     /**
@@ -70,7 +71,18 @@ public final class ControlFlowGraph {
      * @return the source file's line count
      */
     public int getLineCount() {
-        return lineCount;
+        return lines.size();
+    }
+
+    /**
+     * Returns the source line of a node.
+     *
+     * @param number the node's number
+     * @return the source line, exactly as read
+     * @throws IndexOutOfBoundsException if no line has that number
+     */
+    public String getStatement(int number) {
+        return lines.get(number);
     }
 
     /**
@@ -91,8 +103,8 @@ public final class ControlFlowGraph {
      */
     public int countEdges() {
         int edgeCount = 0;
-        for (int from = 0; from < lineCount; from++) {
-            for (int to = 0; to < lineCount; to++) {
+        for (int from = 0; from < getLineCount(); from++) {
+            for (int to = 0; to < getLineCount(); to++) {
                 if (hasEdge(from, to)) {
                     edgeCount++;
                 }
