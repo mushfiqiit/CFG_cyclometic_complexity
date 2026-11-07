@@ -2,7 +2,7 @@ package cfg;
 
 import java.util.List;
 
-/** Calculates cyclomatic complexity by counting branching keywords. */
+/** Counts the branching keywords in source lines, which gives the cyclomatic complexity. */
 public final class ComplexityCalculator {
 
     /** Prevents instantiation; this class only has static methods. */
@@ -10,16 +10,15 @@ public final class ComplexityCalculator {
     }
 
     /**
-     * Counts the {@code if}, {@code else if}, {@code else} and loop lines, prints each count, and
-     * returns their sum plus one.
+     * Counts the {@code if}, {@code else if}, {@code else} and loop lines.
      *
-     * <p>{@code else if} lines are counted as {@code else}, so the printed {@code elsifs} count is
-     * always 0. The total is unaffected.
+     * <p>{@code else if} lines are counted as {@code else}, so the {@code else if} count is always
+     * 0. The total is unaffected.
      *
      * @param lines the source lines to scan
-     * @return the cyclomatic complexity
+     * @return the counts, whose {@link DecisionCounts#complexity()} is the cyclomatic complexity
      */
-    public static int calculate(List<String> lines) {
+    public static DecisionCounts countDecisions(List<String> lines) {
         int ifs = 0;
         int elseIfs = 0;
         int elses = 0;
@@ -37,11 +36,6 @@ public final class ComplexityCalculator {
                 loops++;
             }
         }
-
-        System.out.println("ifs: " + ifs);
-        System.out.println("elsifs: " + elseIfs);
-        System.out.println("els: " + elses);
-        System.out.println("loops: " + loops);
-        return ifs + elseIfs + elses + loops + 1;
+        return new DecisionCounts(ifs, elseIfs, elses, loops);
     }
 }

@@ -77,8 +77,8 @@ public class GraphViewer extends Application {
 
     /**
      * Adds a node for each node the root can reach. Each level is drawn as a row, and nodes on the
-     * same level are placed left to right in order of node number. Double-clicking a node shows
-     * its source line.
+     * same level are placed left to right in order of node number. Each node is labelled with its
+     * 1-based line number, and double-clicking it shows its source line.
      *
      * @param root the group that holds the scene's contents
      * @param graph the graph to draw
@@ -97,7 +97,7 @@ public class GraphViewer extends Application {
 
             int column = nodesPerLevel[level]++;
             GraphicNode node = GraphicNode.of(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
-                    number, graph.getStatement(number).strip());
+                    number + 1, graph.getStatement(number).strip());
             nodes.put(number, node);
             root.getChildren().add(node);
         }

@@ -17,14 +17,4 @@ public record Variable(String name, int value) {
     public static Variable from(String name) {
         return new Variable(name, 0);
     }
-
-    /**
-     * Returns the name and value separated by a space, such as {@code "a 0"}.
-     *
-     * @return the printable form of this variable
-     */
-    @Override
-    public String toString() {
-        return name + " " + value;
-    }
 }

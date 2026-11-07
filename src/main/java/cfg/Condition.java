@@ -1,16 +1,23 @@
 package cfg;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** A comparison found in an {@code if}, {@code else if} or {@code while} statement. */
 public class Condition {
 
+    private final String text;
     private final List<Variable> variables = new ArrayList<>();
     private String comparisonSign;
 
-    /** Creates a condition with no operands and no comparison sign. Use {@link #from(String)}. */
-    private Condition() {
+    /**
+     * Creates a condition with no operands and no comparison sign. Use {@link #from(String)}.
+     *
+     * @param text the condition as written in the source
+     */
+    private Condition(String text) {
+        this.text = text;
     }
 
     // ***************************************************************************
@@ -25,7 +32,7 @@ public class Condition {
      * @return the parsed condition, with no comparison sign if none was found
      */
     public static Condition from(String line) {
-        Condition condition = new Condition();
+        Condition condition = new Condition(conditionText(line));
         StringBuilder variable = new StringBuilder();
         StringBuilder comparison = new StringBuilder();
         boolean insideParentheses = false;
@@ -46,6 +53,20 @@ public class Condition {
         }
         condition.addPendingVariable(variable);
         return condition;
+    }
+
+    /**
+     * Extracts the condition as written: the text between the first {@code (} and the last
+     * {@code )}, or to the end of the line if there is no {@code )}.
+     *
+     * @param line an {@code if}, {@code else if} or {@code while} line
+     * @return the condition text without surrounding whitespace
+     */
+    private static String conditionText(String line) {
+        int open = line.indexOf('(');
+        int close = line.lastIndexOf(')');
+        String text = close > open ? line.substring(open + 1, close) : line.substring(open + 1);
+        return text.strip();
     }
 
     /**
@@ -87,6 +108,15 @@ public class Condition {
     // ***************************************************************************
 
     /**
+     * Returns the condition as written in the source, such as {@code "a > b"}.
+     *
+     * @return the text between the parentheses
+     */
+    public String getText() {
+        return text;
+    }
+
+    /**
      * Returns the comparison operator.
      *
      * @return the operator, such as {@code ">"} or {@code "=="}, or null if none was found
@@ -96,12 +126,11 @@ public class Condition {
     }
 
     /**
-     * Prints each operand on its own line, then the first operand's name again.
+     * Returns the operands of the comparison.
      *
-     * @throws IndexOutOfBoundsException if the condition has no operands
+     * @return the operands in the order they appear, as a read-only list
      */
-    public void printVariables() {
-        variables.forEach(System.out::println);
-        System.out.println(variables.get(0).name());
+    public List<Variable> getOperands() {
+        return Collections.unmodifiableList(variables);
     }
 }

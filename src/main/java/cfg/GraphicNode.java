@@ -51,7 +51,7 @@ class GraphicNode extends Button {
      *
      * @param x horizontal position in the scene
      * @param y vertical position in the scene
-     * @param number the node's number, shown first
+     * @param number the number shown first, such as the node's line number
      * @param text the label shown after a double-click
      * @return the new node
      */

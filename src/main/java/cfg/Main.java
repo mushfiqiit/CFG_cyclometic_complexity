@@ -14,7 +14,7 @@ import java.util.Scanner;
 public final class Main {
 
     private static final String DEFAULT_SOURCE_FILE = "test.txt";
-    /** Menu option that lists variables and conditions. The menu still labels it "Generate Testcase". */
+    /** Menu option that lists the test case data: variables and conditions. */
     private static final int VARIABLE_CONDITION_OPTION = 2;
 
     private static final int EXIT_UNREADABLE_FILE = 1;
@@ -60,10 +60,11 @@ public final class Main {
         }
         String sourceFile = args.length == 1 ? args[0] : DEFAULT_SOURCE_FILE;
 
-        System.out.println("Control Flow Graph\n\n");
+        System.out.println("Control Flow Graph Analyzer");
         List<String> lines = readSourceFile(sourceFile);
+        System.out.println("Source file: " + sourceFile + " (" + lines.size() + " lines)");
 
-        System.out.println("Enter option: 1.Cyclomatic Complexity 2. Generate Testcase");
+        printMenu();
         int option = new Scanner(System.in).nextInt();
 
         if (option == VARIABLE_CONDITION_OPTION) {
@@ -76,6 +77,16 @@ public final class Main {
     // ***************************************************************************
     // Handling the command line
     // ***************************************************************************
+
+    /** Prints the analysis menu and the prompt for the user's choice. */
+    private static void printMenu() {
+        System.out.println();
+        System.out.println("Choose an analysis:");
+        System.out.println("  1. Cyclomatic complexity and control flow graph");
+        System.out.println("  2. Test case data (variables and conditions)");
+        System.out.print("Enter 1 or 2: ");
+        System.out.flush();
+    }
 
     /**
      * Tells whether the only argument asks for the usage message.

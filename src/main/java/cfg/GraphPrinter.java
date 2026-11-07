@@ -1,24 +1,33 @@
 package cfg;
 
-/** Prints a {@link ControlFlowGraph} and its graph-based complexity to standard output. */
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringJoiner;
+
+/**
+ * Prints a {@link ControlFlowGraph} and its complexity to standard output. Lines are shown with
+ * the 1-based numbers an editor uses, so node {@code n} is printed as line {@code n + 1}.
+ */
 final class GraphPrinter {
+
+    private static final int MAX_STATEMENT_LENGTH = 40;
 
     /** Prevents instantiation; this class only has static methods. */
     private GraphPrinter() {
     }
 
     // ***************************************************************************
-    // Printing the root
+    // Printing the entry point
     // ***************************************************************************
 
     /**
-     * Prints the root node's number and source line.
+     * Prints the line the graph starts from.
      *
      * @param root the graph's root node
      */
-    static void printRoot(Node root) {
-        System.out.println("\n\n\nroot node no: " + root.getNumber() + "\n"
-                + "root node statement: " + root.getStatement());
+    static void printEntryPoint(Node root) {
+        System.out.println("Entry point: line " + lineNumber(root.getNumber()) + ": "
+                + root.getStatement().strip());
     }
 
     // ***************************************************************************
@@ -26,64 +35,142 @@ final class GraphPrinter {
     // ***************************************************************************
 
     /**
-     * Prints the adjacency list, the adjacency matrix and the graph-based complexity.
+     * Prints each line the entry point can reach, with the lines that can run right after it, then
+     * the same edges as an adjacency matrix.
      *
      * @param graph the graph to print
      */
     static void printGraph(ControlFlowGraph graph) {
-        printAdjacencyList(graph);
-        printAdjacencyMatrix(graph);
-        printGraphComplexity(graph);
+        List<Integer> nodes = reachableNodes(graph);
+        printSuccessorTable(graph, nodes);
+        printAdjacencyMatrix(graph, nodes);
     }
 
     /**
-     * Prints each node's number followed by the numbers of the nodes it leads to.
+     * Prints one row per reachable line: its number, its statement and the lines it leads to.
      *
      * @param graph the graph to print
+     * @param nodes the reachable node numbers, in order
      */
-    private static void printAdjacencyList(ControlFlowGraph graph) {
-        System.out.println("\nAdjacency List:");
-        for (int from = 0; from < graph.getLineCount(); from++) {
-            System.out.print("\t" + from + "  ->   ");
-            for (int to = 0; to < graph.getLineCount(); to++) {
-                if (graph.hasEdge(from, to)) {
-                    System.out.print(to + " ");
-                }
-            }
-            System.out.println();
+    private static void printSuccessorTable(ControlFlowGraph graph, List<Integer> nodes) {
+        ConsoleText.printSection("Control flow graph");
+        System.out.println("  Each row is a source line, followed by the lines that can run right after it.");
+        System.out.println();
+
+        ConsoleTable table = new ConsoleTable("Line", "Statement", "Next lines").alignRight(0);
+        for (int node : nodes) {
+            String statement = ConsoleText.shorten(graph.getStatement(node).strip(), MAX_STATEMENT_LENGTH);
+            table.addRow(lineNumber(node), statement, successors(graph, node));
         }
+        table.print();
     }
 
     /**
-     * Prints the adjacency matrix, one row per node, with 1 marking an edge and 0 its absence.
+     * Prints the adjacency matrix of the reachable lines, with {@code 1} where the row's line can
+     * run right before the column's line and {@code .} elsewhere.
      *
      * @param graph the graph to print
+     * @param nodes the reachable node numbers, in order
      */
-    private static void printAdjacencyMatrix(ControlFlowGraph graph) {
-        System.out.println("\nAdjacency Matrix:");
-        for (int from = 0; from < graph.getLineCount(); from++) {
-            System.out.print("\t" + from + "\t");
-            for (int to = 0; to < graph.getLineCount(); to++) {
-                System.out.print((graph.hasEdge(from, to) ? 1 : 0) + " ");
-            }
-            System.out.println();
+    private static void printAdjacencyMatrix(ControlFlowGraph graph, List<Integer> nodes) {
+        ConsoleText.printSection("Adjacency matrix");
+        System.out.println("  1 means the row's line can run right before the column's line.");
+        System.out.println();
+
+        String[] headers = new String[nodes.size() + 1];
+        headers[0] = "Line";
+        for (int column = 0; column < nodes.size(); column++) {
+            headers[column + 1] = String.valueOf(lineNumber(nodes.get(column)));
         }
+        ConsoleTable table = new ConsoleTable(headers);
+        for (int column = 0; column < headers.length; column++) {
+            table.alignRight(column);
+        }
+        for (int from : nodes) {
+            Object[] cells = new Object[headers.length];
+            cells[0] = lineNumber(from);
+            for (int column = 0; column < nodes.size(); column++) {
+                cells[column + 1] = graph.hasEdge(from, nodes.get(column)) ? "1" : ".";
+            }
+            table.addRow(cells);
+        }
+        table.print();
     }
 
+    // ***************************************************************************
+    // Printing the complexity
+    // ***************************************************************************
+
     /**
-     * Prints the node and edge counts and the complexity calculated from them as
-     * edges - nodes + 2. The node count is the number of lines minus one.
-     *
-     * <p>The "Edges" and "Verteces" labels are swapped: each shows the other's count.
+     * Prints the cyclomatic complexity worked out both ways: from the graph as edges - nodes + 2,
+     * and from the decision points as decisions + 1. The node count is the number of source lines
+     * minus one.
      *
      * @param graph the graph to measure
+     * @param decisions the decision points counted in the source
      */
-    private static void printGraphComplexity(ControlFlowGraph graph) {
+    static void printComplexity(ControlFlowGraph graph, DecisionCounts decisions) {
         int nodeCount = graph.getLineCount() - 1;
         int edgeCount = graph.countEdges();
+        int fromGraph = edgeCount - nodeCount + 2;
 
-        System.out.println("Edges " + nodeCount);
-        System.out.println("Verteces " + edgeCount);
-        System.out.println("Cyclometic complexity using cfg is " + (edgeCount - nodeCount + 2));
+        ConsoleText.printSection("Cyclomatic complexity");
+        System.out.printf("  From the graph:            M = E - N + 2 = %d - %d + 2 = %d%n",
+                edgeCount, nodeCount, fromGraph);
+        System.out.printf("  From the decision points:  M = D + 1 = %d + 1 = %d%n",
+                decisions.total(), decisions.complexity());
+        System.out.println("  Decision points: " + String.join(", ",
+                ConsoleText.count(decisions.ifs(), "if", "ifs"),
+                ConsoleText.count(decisions.elseIfs(), "else if", "else ifs"),
+                ConsoleText.count(decisions.elses(), "else", "elses"),
+                ConsoleText.count(decisions.loops(), "loop", "loops")));
+    }
+
+    // ***************************************************************************
+    // Helpers
+    // ***************************************************************************
+
+    /**
+     * Lists the nodes the root can reach, in order of node number.
+     *
+     * @param graph the graph to inspect
+     * @return the reachable node numbers
+     */
+    private static List<Integer> reachableNodes(ControlFlowGraph graph) {
+        int[] levels = graph.computeLevels();
+        List<Integer> nodes = new ArrayList<>();
+        for (int node = 0; node < graph.getLineCount(); node++) {
+            if (levels[node] < GraphData.UNREACHABLE_LEVEL) {
+                nodes.add(node);
+            }
+        }
+        return nodes;
+    }
+
+    /**
+     * Lists the line numbers that can run right after a node.
+     *
+     * @param graph the graph to inspect
+     * @param node the node's number
+     * @return the line numbers separated by commas, or {@code (end)} if there are none
+     */
+    private static String successors(ControlFlowGraph graph, int node) {
+        StringJoiner next = new StringJoiner(", ");
+        for (int to = 0; to < graph.getLineCount(); to++) {
+            if (graph.hasEdge(node, to)) {
+                next.add(String.valueOf(lineNumber(to)));
+            }
+        }
+        return next.length() == 0 ? "(end)" : next.toString();
+    }
+
+    /**
+     * Converts a node number to the 1-based line number shown to the user.
+     *
+     * @param node the node's number, counting from 0
+     * @return the line number, counting from 1
+     */
+    private static int lineNumber(int node) {
+        return node + 1;
     }
 }

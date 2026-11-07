@@ -23,10 +23,45 @@ gradlew.bat run --args="path\to\program.c" --console=plain
 
 Pass the C file to analyze with `--args`. Relative paths are resolved from the project root, because that is where Gradle runs the program; use an absolute path for a file elsewhere. Without `--args`, the program analyzes `test.txt` in the project root.
 
-The program then asks you to choose an option:
+The program then asks you to choose an analysis:
 
-- `1` prints the graph and cyclomatic complexity, then opens the graph window. Double-click a node to see its source line.
-- `2` prints the variables and conditions it found.
+- `1` prints the control flow graph and the cyclomatic complexity, then opens the graph window. Nodes are labelled with their line numbers; double-click a node to see its source line.
+- `2` prints the test case data: the declared `int` variables with their test values, and the conditions to cover.
+
+Line numbers in the output count from 1, as in an editor. For example, option 2 on `test.txt` prints:
+
+```
+Test Case Data
+==============
+
+Test input values
+-----------------
+  Variable  Value
+  --------  -----
+  a             0
+  b             0
+  c             0
+  k             0
+
+Conditions to cover
+-------------------
+  #  Line  Condition  Operator  Operands
+  -  ----  ---------  --------  --------
+  1     4  k>0        >         k, 0
+  2     5  a>b        >         a, b
+  3     8  a==b       ==        a, b
+  4    11  a>c        >         a, c
+```
+
+Option 1 ends with both complexity results:
+
+```
+Cyclomatic complexity
+---------------------
+  From the graph:            M = E - N + 2 = 18 - 16 + 2 = 4
+  From the decision points:  M = D + 1 = 4 + 1 = 5
+  Decision points: 1 if, 0 else ifs, 2 elses, 1 loop
+```
 
 Run `./gradlew run --args="--help"` to see the usage message.
 
