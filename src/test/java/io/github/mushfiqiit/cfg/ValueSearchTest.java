@@ -82,4 +82,11 @@ class ValueSearchTest {
 
         assertEquals(Map.of("x", 5), result.values().orElseThrow());
     }
+
+    @Test
+    void neighboursOfTheLargestIntDoNotWrapAround() {
+        Result result = ValueSearch.search(require(new Comparison("a", "<", "2147483647"), true), List.of("a"), zeros("a"));
+
+        assertEquals(Map.of("a", 0), result.values().orElseThrow());
+    }
 }

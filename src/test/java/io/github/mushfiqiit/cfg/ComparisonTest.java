@@ -61,4 +61,14 @@ class ComparisonTest {
         assertTrue(Comparison.isInteger("-5"));
         assertFalse(Comparison.isInteger("5a"));
     }
+
+    @Test
+    void integersMustFitInAnInt() {
+        assertEquals(java.util.OptionalInt.of(2147483647), Comparison.parseInteger("2147483647"));
+        assertEquals(java.util.OptionalInt.of(-2147483648), Comparison.parseInteger("-2147483648"));
+        assertEquals(java.util.OptionalInt.of(7), Comparison.parseInteger("0007"));
+        assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("2147483648"));
+        assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("99999999999999999999"));
+        assertEquals(Optional.empty(), comparisonOf("if (a > 99999999999) {"));
+    }
 }

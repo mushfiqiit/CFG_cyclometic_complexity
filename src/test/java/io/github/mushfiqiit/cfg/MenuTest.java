@@ -1,8 +1,14 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -13,8 +19,13 @@ class MenuTest {
     private Optional<Menu.Analysis> choice;
 
     private String ask(String input) {
-        return TestSupport.print(out -> choice = Menu.ask(
-                new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), out));
+        return TestSupport.print(out -> {
+            try {
+                choice = Menu.ask(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), out);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
     }
 
     @Test
@@ -44,5 +55,19 @@ class MenuTest {
 
         assertEquals(Optional.empty(), choice);
         assertEquals("Enter 1 or 2: Please enter 1 or 2.\nEnter 1 or 2: \n", output.substring(output.indexOf("Enter")));
+    }
+
+    @Test
+    void passesOnAFailureToReadTheAnswer() {
+        InputStream broken = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("input closed");
+            }
+        };
+
+        IOException failure = assertThrows(IOException.class,
+                () -> Menu.ask(broken, new PrintStream(OutputStream.nullOutputStream())));
+        assertEquals("input closed", failure.getMessage());
     }
 }

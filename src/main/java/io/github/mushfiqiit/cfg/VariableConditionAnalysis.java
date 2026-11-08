@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -22,7 +23,6 @@ import java.util.stream.Collectors;
 public final class VariableConditionAnalysis {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_]\\w*");
-    private static final Pattern INTEGER = Pattern.compile("-?\\d+");
 
     private final Map<String, DeclaredVariable> variables = new LinkedHashMap<>();
     private List<ConditionSite> conditions = List.of();
@@ -103,8 +103,8 @@ public final class VariableConditionAnalysis {
 
     /**
      * Adds each variable in an {@code int} declaration, such as {@code a} and {@code b} in
-     * {@code int a = 5, b;}. A variable without a value is an input, one set to an integer is
-     * fixed, and one set by any other expression is computed. A name declared twice keeps its
+     * {@code int a = 5, b;}. A variable without a value is an input, one set to an integer that
+     * fits in an {@code int} is fixed, and one set by any other expression is computed. A name declared twice keeps its
      * first declaration.
      *
      * @param declaration text that starts with the keyword {@code int}
@@ -119,13 +119,14 @@ public final class VariableConditionAnalysis {
             }
             String[] parts = declarator.split("=", 2);
             String initializer = parts.length == 2 ? parts[1].strip() : "";
+            OptionalInt value = Comparison.parseInteger(initializer);
             DeclaredVariable variable;
-            if (loopCounter || (!initializer.isEmpty() && !INTEGER.matcher(initializer).matches())) {
+            if (loopCounter || (!initializer.isEmpty() && value.isEmpty())) {
                 variable = DeclaredVariable.computed(name);
             } else if (initializer.isEmpty()) {
                 variable = DeclaredVariable.input(name);
             } else {
-                variable = DeclaredVariable.fixed(name, Integer.parseInt(initializer));
+                variable = DeclaredVariable.fixed(name, value.getAsInt());
             }
             variables.put(name, variable);
         }
@@ -271,7 +272,7 @@ public final class VariableConditionAnalysis {
         if (testCase.inputs().isEmpty()) {
             return "no values: " + testCase.reason();
         }
-        Map<String, Integer> inputs = testCase.inputs().get();
+        Map<String, Integer> inputs = testCase.inputs().orElseThrow();
         if (inputs.isEmpty()) {
             return "none needed";
         }

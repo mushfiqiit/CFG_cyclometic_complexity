@@ -96,8 +96,8 @@ final class ValueSearch {
 
     /**
      * Chooses the values to try: small numbers, and each number in the comparisons or held by a
-     * variable they use, together with its neighbours. Values closer to 0 come first, positive
-     * before negative.
+     * variable they use, together with its neighbours that fit in an {@code int}. Values closer to
+     * 0 come first, positive before negative.
      *
      * @param comparisons the comparisons to satisfy
      * @param startValues every variable's starting value
@@ -109,11 +109,15 @@ final class ValueSearch {
             List<Integer> numbers = new ArrayList<>(comparison.constants());
             comparison.variables().stream().map(startValues::get).filter(Objects::nonNull).forEach(numbers::add);
             for (int number : numbers) {
-                seeds.addAll(List.of(number - 1, number, number + 1));
+                for (long neighbour = number - 1L; neighbour <= number + 1L; neighbour++) {
+                    if (neighbour >= Integer.MIN_VALUE && neighbour <= Integer.MAX_VALUE) {
+                        seeds.add((int) neighbour);
+                    }
+                }
             }
         }
         List<Integer> ordered = new ArrayList<>(seeds);
-        ordered.sort(Comparator.<Integer>comparingInt(Math::abs).thenComparing(value -> value < 0));
+        ordered.sort(Comparator.<Integer>comparingLong(value -> Math.abs((long) value)).thenComparing(value -> value < 0));
         return ordered;
     }
 

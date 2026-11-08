@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -20,6 +21,7 @@ record Comparison(String left, String operator, String right) {
 
     private static final Pattern VARIABLE = Pattern.compile("[A-Za-z_]\\w*");
     private static final Pattern INTEGER = Pattern.compile("-?\\d+");
+    private static final int MAX_DIGITS = 10;
     private static final Set<String> OPERATORS = Set.of("<", "<=", ">", ">=", "==", "!=");
 
     // ***************************************************************************
@@ -32,8 +34,8 @@ record Comparison(String left, String operator, String right) {
      * @param left the left operand's text
      * @param operator the operator's text
      * @param right the right operand's text
-     * @return the comparison, or an empty value if an operand is not a variable or an integer, or
-     *         the operator is not supported
+     * @return the comparison, or an empty value if an operand is not a variable or an integer
+     *         that fits in an {@code int}, or the operator is not supported
      */
     static Optional<Comparison> of(String left, String operator, String right) {
         boolean simple = OPERATORS.contains(operator) && isOperand(left) && isOperand(right);
@@ -51,13 +53,33 @@ record Comparison(String left, String operator, String right) {
     }
 
     /**
-     * Tells whether text is an integer.
+     * Tells whether text is an integer that fits in an {@code int}.
      *
      * @param operand the text to check
      * @return true for a number such as {@code 0} or {@code -5}
      */
     static boolean isInteger(String operand) {
-        return INTEGER.matcher(operand).matches();
+        return parseInteger(operand).isPresent();
+    }
+
+    /**
+     * Reads an integer that fits in an {@code int}. Larger numbers are not read, so they never
+     * cause an exception.
+     *
+     * @param text the text to read
+     * @return the integer, or an empty value if the text is not a whole number or does not fit
+     *         in an {@code int}
+     */
+    static OptionalInt parseInteger(String text) {
+        if (!INTEGER.matcher(text).matches()) {
+            return OptionalInt.empty();
+        }
+        String digits = text.replaceFirst("^-?0*(?=\\d)", "");
+        if (digits.length() > MAX_DIGITS) {
+            return OptionalInt.empty();
+        }
+        long value = Long.parseLong(text);
+        return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE ? OptionalInt.of((int) value) : OptionalInt.empty();
     }
 
     /**
@@ -97,9 +119,7 @@ record Comparison(String left, String operator, String right) {
     List<Integer> constants() {
         List<Integer> constants = new ArrayList<>();
         for (String operand : List.of(left, right)) {
-            if (isInteger(operand)) {
-                constants.add(Integer.parseInt(operand));
-            }
+            parseInteger(operand).ifPresent(constants::add);
         }
         return constants;
     }
@@ -131,6 +151,7 @@ record Comparison(String left, String operator, String right) {
      * @return the integer itself, or the variable's value
      */
     private static int valueOf(String operand, Map<String, Integer> values) {
-        return isInteger(operand) ? Integer.parseInt(operand) : values.get(operand);
+        OptionalInt integer = parseInteger(operand);
+        return integer.isPresent() ? integer.getAsInt() : values.get(operand);
     }
 }

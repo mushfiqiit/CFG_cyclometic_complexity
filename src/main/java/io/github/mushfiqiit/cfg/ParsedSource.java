@@ -60,7 +60,7 @@ record ParsedSource(List<String> lines, Optional<Function> function) {
         if (function.isEmpty()) {
             return List.of();
         }
-        Function code = function.get();
+        Function code = function.orElseThrow();
         String header = code.header().text();
         if (SyntaxIdentifier.isLoop(header)) {
             return List.of(new Loop(code.header(), code.body()));

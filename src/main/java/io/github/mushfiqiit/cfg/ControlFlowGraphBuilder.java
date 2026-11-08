@@ -99,7 +99,7 @@ public final class ControlFlowGraphBuilder {
         if (block.closing().isEmpty()) {
             return previous;
         }
-        Node closing = nodeFor(block.closing().get());
+        Node closing = nodeFor(block.closing().orElseThrow());
         link(previous, closing);
         return List.of(closing);
     }

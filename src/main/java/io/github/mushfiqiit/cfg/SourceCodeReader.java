@@ -1,12 +1,12 @@
 package io.github.mushfiqiit.cfg;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Scanner;
 
-/** Reads text files line by line. */
+/** Reads UTF-8 text files line by line. */
 public final class SourceCodeReader {
 
     /** Prevents instantiation; this class only has static methods. */
@@ -14,19 +14,17 @@ public final class SourceCodeReader {
     }
 
     /**
-     * Reads every line of a text file.
+     * Reads every line of a UTF-8 text file. Unlike {@link java.util.Scanner}, every failure is
+     * reported: nothing is silently skipped.
      *
      * @param fileName path of the file, relative to the working directory unless absolute
      * @return the file's lines in order, without line terminators
-     * @throws FileNotFoundException if the file does not exist or cannot be opened
+     * @throws java.nio.file.NoSuchFileException if the file does not exist
+     * @throws java.nio.charset.MalformedInputException if the file is not valid UTF-8 text
+     * @throws IOException if the file cannot be read for any other reason, such as being a
+     *         folder or not being readable
      */
-    public static List<String> readLines(String fileName) throws FileNotFoundException {
-        List<String> lines = new ArrayList<>();
-        try (Scanner scanner = new Scanner(new File(fileName))) {
-            while (scanner.hasNextLine()) {
-                lines.add(scanner.nextLine());
-            }
-        }
-        return lines;
+    public static List<String> readLines(String fileName) throws IOException {
+        return Files.readAllLines(Path.of(fileName), StandardCharsets.UTF_8);
     }
 }

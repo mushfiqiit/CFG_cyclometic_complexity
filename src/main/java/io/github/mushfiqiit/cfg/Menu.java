@@ -49,29 +49,25 @@ final class Menu {
      *
      * @param in where to read the answers from
      * @param out where to print the menu and prompts
-     * @return the chosen analysis, or an empty value if the input ends or cannot be read before a
-     *         valid answer
+     * @return the chosen analysis, or an empty value if the input ends before a valid answer
+     * @throws IOException if the answers cannot be read
      */
-    static Optional<Analysis> ask(InputStream in, PrintStream out) {
+    static Optional<Analysis> ask(InputStream in, PrintStream out) throws IOException {
         printChoices(out);
         BufferedReader input = new BufferedReader(new InputStreamReader(in));
-        try {
-            while (true) {
-                out.print(PROMPT);
-                out.flush();
-                String answer = input.readLine();
-                if (answer == null) {
-                    out.println();
-                    return Optional.empty();
-                }
-                Optional<Analysis> choice = analysisFor(answer.strip());
-                if (choice.isPresent()) {
-                    return choice;
-                }
-                out.println(RETRY);
+        while (true) {
+            out.print(PROMPT);
+            out.flush();
+            String answer = input.readLine();
+            if (answer == null) {
+                out.println();
+                return Optional.empty();
             }
-        } catch (IOException e) {
-            return Optional.empty();
+            Optional<Analysis> choice = analysisFor(answer.strip());
+            if (choice.isPresent()) {
+                return choice;
+            }
+            out.println(RETRY);
         }
     }
 

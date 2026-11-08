@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.mushfiqiit.cfg.TestSupport.ProgramRun;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -180,6 +183,65 @@ class MainTest {
         assertEquals(Main.EXIT_INPUT_ERROR, run.status());
         assertEquals("Error: no analysis was chosen.\n", run.errors());
         assertFalse(run.output().contains("Test Case Data"));
+    }
+
+    @Test
+    void failureToReadTheMenuAnswerIsReportedWithItsCause() {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ByteArrayOutputStream errors = new ByteArrayOutputStream();
+        InputStream broken = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("input closed");
+            }
+        };
+
+        int status = Main.run(new String[] {programPath("sample.c").toString()}, broken,
+                new PrintStream(output, true, StandardCharsets.UTF_8), new PrintStream(errors, true, StandardCharsets.UTF_8),
+                graph -> { });
+
+        assertEquals(Main.EXIT_INPUT_ERROR, status);
+        assertEquals("Error: cannot read the menu choice: input closed", errors.toString(StandardCharsets.UTF_8).strip());
+    }
+
+    @Test
+    void fileThatIsNotUtf8IsReportedInsteadOfLookingEmpty() throws IOException {
+        Path latin1 = folder.resolve("latin1.c");
+        Files.write(latin1, "int main(void) {\n    printf(\"caf\u00e9\");\n}\n".getBytes(StandardCharsets.ISO_8859_1));
+
+        ProgramRun run = runProgram("2\n", latin1.toString());
+
+        assertEquals(Main.EXIT_INPUT_ERROR, run.status());
+        assertEquals("Error: cannot read source file: " + latin1 + " is not valid UTF-8 text\n", run.errors());
+    }
+
+    @Test
+    void folderIsReportedWithoutAStackTrace() {
+        ProgramRun run = runProgram("2\n", folder.toString());
+
+        assertEquals(Main.EXIT_INPUT_ERROR, run.status());
+        assertTrue(run.errors().startsWith("Error: cannot open source file: " + folder + " ("), run.errors());
+        assertFalse(run.errors().contains("Exception"));
+    }
+
+    @Test
+    void numbersTooLargeForAnIntAreReportedInsteadOfCrashing() throws IOException {
+        String path = file("big.c",
+                "int main(void) {",
+                "    int big = 99999999999;",
+                "    int a;",
+                "    if (a > big) {",
+                "    }",
+                "    if (a > 99999999999) {",
+                "    }",
+                "}");
+
+        ProgramRun run = runProgram("2\n", path);
+
+        assertEquals(Main.EXIT_SUCCESS, run.status(), run.errors());
+        assertTrue(run.output().contains("  big       computed in the code\n"), run.output());
+        assertTrue(run.output().contains("no values: depends on big, which is computed in the code"));
+        assertTrue(run.output().contains("no values: the condition is too complex to solve"));
     }
 
     @Test

@@ -100,17 +100,18 @@ final class TestCaseGenerator {
 
         Map<Comparison, Boolean> constraints = new LinkedHashMap<>();
         for (Requirement requirement : requirements) {
-            Optional<Comparison> comparison = requirement.condition().toComparison();
-            if (comparison.isEmpty()) {
+            Optional<Comparison> solvable = requirement.condition().toComparison();
+            if (solvable.isEmpty()) {
                 return noValues(site, outcome, requirement.lineNumber() == site.lineNumber()
                         ? "the condition is too complex to solve"
                         : "the condition on line " + requirement.lineNumber() + ", which leads here, is too complex to solve");
             }
-            Optional<String> computed = computedVariable(comparison.get(), declared);
+            Comparison comparison = solvable.orElseThrow();
+            Optional<String> computed = computedVariable(comparison, declared);
             if (computed.isPresent()) {
-                return noValues(site, outcome, "depends on " + computed.get() + ", which is computed in the code");
+                return noValues(site, outcome, "depends on " + computed.orElseThrow() + ", which is computed in the code");
             }
-            Boolean required = constraints.put(comparison.get(), requirement.outcome());
+            Boolean required = constraints.put(comparison, requirement.outcome());
             if (required != null && required != requirement.outcome()) {
                 return noValues(site, outcome, CONTRADICTION);
             }

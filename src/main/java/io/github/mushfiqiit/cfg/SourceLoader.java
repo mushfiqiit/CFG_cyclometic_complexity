@@ -1,6 +1,10 @@
 package io.github.mushfiqiit.cfg;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.charset.MalformedInputException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
+import java.nio.file.NoSuchFileException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.Optional;
@@ -34,8 +38,8 @@ final class SourceLoader {
         List<String> lines;
         try {
             lines = SourceCodeReader.readLines(sourceFile);
-        } catch (FileNotFoundException e) {
-            err.println("Error: cannot open source file: " + e.getMessage());
+        } catch (IOException e) {
+            err.println(describeReadFailure(sourceFile, e));
             return Optional.empty();
         }
         out.println("Source file: " + sourceFile + " (" + lines.size() + " lines)");
@@ -52,6 +56,30 @@ final class SourceLoader {
     // ***************************************************************************
     // Reporting problems
     // ***************************************************************************
+
+    /**
+     * Explains why a source file could not be read.
+     *
+     * @param sourceFile the file's path, as given
+     * @param failure what went wrong
+     * @return the error message to print
+     */
+    static String describeReadFailure(String sourceFile, IOException failure) {
+        if (failure instanceof MalformedInputException) {
+            return "Error: cannot read source file: " + sourceFile + " is not valid UTF-8 text";
+        }
+        String reason;
+        if (failure instanceof NoSuchFileException) {
+            reason = "No such file or directory";
+        } else if (failure instanceof AccessDeniedException) {
+            reason = "Permission denied";
+        } else if (failure instanceof FileSystemException fileFailure && fileFailure.getReason() != null) {
+            reason = fileFailure.getReason();
+        } else {
+            reason = failure.getMessage();
+        }
+        return "Error: cannot open source file: " + sourceFile + " (" + reason + ")";
+    }
 
     /**
      * Prints why the source file cannot be analyzed, with at most {@value #MAX_PROBLEMS_SHOWN}

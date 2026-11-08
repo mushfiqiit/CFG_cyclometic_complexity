@@ -168,17 +168,13 @@ final class SourceFormatChecker {
     private static void checkStructure(List<String> code, Function function, List<Problem> problems) {
         List<Problem> found = new ArrayList<>();
         findElsesWithoutIf(function.body(), found);
-        function.body().closing().flatMap(end -> firstLineAfter(code, end)).ifPresent(line -> found.add(new Problem(
+        function.body().closing().ifPresent(end -> firstLineAfter(code, end).ifPresent(line -> found.add(new Problem(
                 line.number(), "only one function can be analyzed, and this line comes after the function that ends on line "
-                        + function.body().closing().get().number())));
+                        + end.number()))));
 
-        Optional<Problem> first = found.stream().min(Comparator.comparingInt(Problem::lineNumber));
-        if (first.isPresent()) {
-            problems.add(first.get());
-        } else {
-            innermostUnclosed(function.header(), function.body()).ifPresent(line -> problems.add(
-                    new Problem(line.number(), "this block is never closed; add a } on its own line")));
-        }
+        found.stream().min(Comparator.comparingInt(Problem::lineNumber)).ifPresentOrElse(problems::add,
+                () -> innermostUnclosed(function.header(), function.body()).ifPresent(line -> problems.add(
+                        new Problem(line.number(), "this block is never closed; add a } on its own line"))));
     }
 
     /**

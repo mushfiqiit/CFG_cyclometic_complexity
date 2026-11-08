@@ -1,5 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.Optional;
@@ -70,19 +71,26 @@ public final class Main {
         }
 
         out.println("Control Flow Graph Analyzer");
-        Optional<ParsedSource> source = SourceLoader.load(((CommandLine.Analyze) command).sourceFile(), out, err);
-        if (source.isEmpty()) {
+        Optional<ParsedSource> loaded = SourceLoader.load(((CommandLine.Analyze) command).sourceFile(), out, err);
+        if (loaded.isEmpty()) {
             return EXIT_INPUT_ERROR;
         }
+        ParsedSource source = loaded.orElseThrow();
 
-        Optional<Menu.Analysis> choice = Menu.ask(in, out);
+        Optional<Menu.Analysis> choice;
+        try {
+            choice = Menu.ask(in, out);
+        } catch (IOException e) {
+            err.println("Error: cannot read the menu choice: " + e.getMessage());
+            return EXIT_INPUT_ERROR;
+        }
         if (choice.isEmpty()) {
             err.println("Error: no analysis was chosen.");
             return EXIT_INPUT_ERROR;
         }
-        switch (choice.get()) {
-            case COMPLEXITY -> ComplexityAnalysis.run(source.get(), out, showGraph);
-            case TEST_CASES -> VariableConditionAnalysis.run(source.get(), out);
+        switch (choice.orElseThrow()) {
+            case COMPLEXITY -> ComplexityAnalysis.run(source, out, showGraph);
+            case TEST_CASES -> VariableConditionAnalysis.run(source, out);
         }
         return EXIT_SUCCESS;
     }
