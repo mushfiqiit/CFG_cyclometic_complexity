@@ -70,4 +70,15 @@ class ControlFlowGraphTest {
         assertThrows(UnsupportedOperationException.class, () -> graph.reachableNodes().add(0));
         assertThrows(UnsupportedOperationException.class, () -> graph.successorsOf(3).add(0));
     }
+
+    @Test
+    void lookingUpALineThatDoesNotExistThrowsAsTheClassDocumentationSays() {
+        int missing = graph.getLineCount();
+
+        assertThrows(IndexOutOfBoundsException.class, () -> graph.getStatement(missing));
+        assertThrows(IndexOutOfBoundsException.class, () -> graph.successorsOf(missing));
+        assertThrows(IndexOutOfBoundsException.class, () -> graph.levelOf(missing));
+        assertThrows(IndexOutOfBoundsException.class, () -> graph.hasEdge(missing, 0));
+        assertFalse(graph.hasEdge(0, missing));
+    }
 }

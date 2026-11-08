@@ -3,6 +3,7 @@ package io.github.mushfiqiit.cfg;
 import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static io.github.mushfiqiit.cfg.TestSupport.program;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -25,5 +26,13 @@ class ComplexityAnalysisTest {
         assertEquals(List.of("shown 16 nodes"), events);
         assertTrue(output.startsWith("\nCyclomatic Complexity\n"));
         assertTrue(output.endsWith("Opening the graph window. Close it to exit.\n"));
+    }
+
+    @Test
+    void sourceWithoutCodeIsRejected() {
+        ParsedSource empty = ParsedSource.of(List.of("#include <stdio.h>", ""));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> print(out -> ComplexityAnalysis.run(empty, out, graph -> { })));
     }
 }

@@ -2,6 +2,7 @@ package io.github.mushfiqiit.cfg;
 
 import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,5 +30,13 @@ class ConsoleTextTest {
         assertEquals("1 loop", ConsoleText.count(1, "loop", "loops"));
         assertEquals("0 loops", ConsoleText.count(0, "loop", "loops"));
         assertEquals("2 loops", ConsoleText.count(2, "loop", "loops"));
+    }
+
+    @Test
+    void shortenRejectsALengthTooSmallForTheDots() {
+        assertEquals("a...", ConsoleText.shorten("abcdef", 4));
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> ConsoleText.shorten("abcdef", 3));
+        assertEquals("maxLength must be at least 4, but was 3", failure.getMessage());
     }
 }

@@ -39,8 +39,12 @@ final class ConsoleText {
      * @param text the text to shorten
      * @param maxLength the longest result allowed; at least 4
      * @return the text unchanged if it fits, or its start followed by {@code ...}
+     * @throws IllegalArgumentException if {@code maxLength} is less than 4
      */
     static String shorten(String text, int maxLength) {
+        if (maxLength < 4) {
+            throw new IllegalArgumentException("maxLength must be at least 4, but was " + maxLength);
+        }
         return text.length() <= maxLength ? text : text.substring(0, maxLength - 3) + "...";
     }
 

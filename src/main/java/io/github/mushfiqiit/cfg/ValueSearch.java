@@ -55,8 +55,17 @@ final class ValueSearch {
      * @param free the variables the search may change, in the order to vary them
      * @param startValues every variable's starting value, including the fixed ones
      * @return the values found, or why there are none
+     * @throws IllegalArgumentException if a comparison uses a variable that is neither free nor
+     *         given a starting value
      */
     static Result search(Map<Comparison, Boolean> constraints, List<String> free, Map<String, Integer> startValues) {
+        for (Comparison comparison : constraints.keySet()) {
+            for (String variable : comparison.variables()) {
+                if (!free.contains(variable) && startValues.get(variable) == null) {
+                    throw new IllegalArgumentException("no starting value for variable " + variable);
+                }
+            }
+        }
         List<Integer> candidates = candidates(constraints.keySet(), startValues);
         if (Math.pow(candidates.size(), free.size()) > SEARCH_LIMIT) {
             return new Result(Status.TOO_MANY_COMBINATIONS, Optional.empty());

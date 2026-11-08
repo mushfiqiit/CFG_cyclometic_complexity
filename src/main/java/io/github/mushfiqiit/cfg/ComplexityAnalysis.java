@@ -21,6 +21,7 @@ public final class ComplexityAnalysis {
      * @param source the source to analyze
      * @param out where to print the report
      * @param showGraph what to do with the finished graph
+     * @throws IllegalArgumentException if the source has no code
      */
     static void run(ParsedSource source, PrintStream out, Consumer<ControlFlowGraph> showGraph) {
         GraphPrinter printer = new GraphPrinter(out);

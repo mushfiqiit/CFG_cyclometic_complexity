@@ -129,8 +129,14 @@ record Comparison(String left, String operator, String right) {
      *
      * @param values the value of every variable it uses
      * @return whether the comparison holds
+     * @throws IllegalArgumentException if a variable the comparison uses has no value
      */
     boolean holds(Map<String, Integer> values) {
+        for (String variable : variables()) {
+            if (values.get(variable) == null) {
+                throw new IllegalArgumentException("no value for variable " + variable);
+            }
+        }
         int a = valueOf(left, values);
         int b = valueOf(right, values);
         return switch (operator) {

@@ -19,7 +19,6 @@ class Edge extends Line {
      *
      * @param startNode the node the edge leaves
      * @param endNode the node the edge enters
-     * @throws NullPointerException if either node is null
      */
     private Edge(GraphicNode startNode, GraphicNode endNode) {
         startXProperty().bind(startNode.layoutXProperty());
@@ -34,7 +33,6 @@ class Edge extends Line {
      * @param startNode the node the edge leaves
      * @param endNode the node the edge enters
      * @return the new edge
-     * @throws NullPointerException if either node is null
      */
     static Edge of(GraphicNode startNode, GraphicNode endNode) {
         Edge edge = new Edge(startNode, endNode);

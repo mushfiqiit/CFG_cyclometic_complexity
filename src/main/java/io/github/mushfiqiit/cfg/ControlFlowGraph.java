@@ -16,6 +16,10 @@ import java.util.TreeSet;
  *
  * <p>The graph holds only the lines the root can reach. It is built once and does not change.
  *
+ * <p>The methods that look up a line by its node number, {@link #getStatement(int)},
+ * {@link #successorsOf(int)}, {@link #levelOf(int)} and {@link #hasEdge(int, int)} (for its
+ * {@code from} line), throw {@link IndexOutOfBoundsException} if no line has that number.
+ *
  * @author sikde
  */
 public final class ControlFlowGraph {
@@ -125,7 +129,6 @@ public final class ControlFlowGraph {
      *
      * @param number the node's number
      * @return the source line, exactly as read
-     * @throws IndexOutOfBoundsException if no line has that number
      */
     public String getStatement(int number) {
         return lines.get(number);
@@ -150,7 +153,6 @@ public final class ControlFlowGraph {
      * @param node the line's node number
      * @return the successors' node numbers in increasing order, as a read-only list; empty for a
      *         line with no successors or one the root cannot reach
-     * @throws IndexOutOfBoundsException if no line has that number
      */
     public List<Integer> successorsOf(int node) {
         return successors.get(node);
@@ -162,7 +164,6 @@ public final class ControlFlowGraph {
      * @param from number of the node the edge leaves
      * @param to number of the node the edge enters
      * @return true if the edge exists
-     * @throws IndexOutOfBoundsException if no line has the number {@code from}
      */
     public boolean hasEdge(int from, int to) {
         return successors.get(from).contains(to);
@@ -192,7 +193,6 @@ public final class ControlFlowGraph {
      *
      * @param node the line's node number
      * @return the level, or an empty value if the root cannot reach the line
-     * @throws IndexOutOfBoundsException if no line has that number
      */
     public OptionalInt levelOf(int node) {
         return levels[node] > 0 ? OptionalInt.of(levels[node]) : OptionalInt.empty();

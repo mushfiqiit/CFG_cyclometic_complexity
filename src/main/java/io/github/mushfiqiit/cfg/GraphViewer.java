@@ -38,7 +38,7 @@ public class GraphViewer extends Application {
      * program run, because JavaFX can only be launched once.
      *
      * @param graph the graph to draw
-     * @throws NullPointerException if {@code graph} is null
+     * @throws IllegalStateException if called more than once in the same program run
      */
     public static void show(ControlFlowGraph graph) {
         graphToShow = Objects.requireNonNull(graph, "graph");

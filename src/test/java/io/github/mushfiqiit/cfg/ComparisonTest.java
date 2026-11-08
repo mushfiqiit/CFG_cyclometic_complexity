@@ -2,6 +2,7 @@ package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -70,5 +71,14 @@ class ComparisonTest {
         assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("2147483648"));
         assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("99999999999999999999"));
         assertEquals(Optional.empty(), comparisonOf("if (a > 99999999999) {"));
+    }
+
+    @Test
+    void evaluatingWithoutAVariablesValueIsRejected() {
+        Comparison comparison = new Comparison("a", ">", "b");
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> comparison.holds(Map.of("a", 1)));
+        assertEquals("no value for variable b", failure.getMessage());
     }
 }

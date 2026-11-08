@@ -1,6 +1,7 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.mushfiqiit.cfg.ValueSearch.Result;
 import io.github.mushfiqiit.cfg.ValueSearch.Status;
@@ -88,5 +89,15 @@ class ValueSearchTest {
         Result result = ValueSearch.search(require(new Comparison("a", "<", "2147483647"), true), List.of("a"), zeros("a"));
 
         assertEquals(Map.of("a", 0), result.values().orElseThrow());
+    }
+
+    @Test
+    void variablesNeedAStartingValueUnlessTheSearchSetsThem() {
+        Map<Comparison, Boolean> constraints = require(new Comparison("a", ">", "b"), true);
+
+        assertEquals(Status.FOUND, ValueSearch.search(constraints, List.of("a", "b"), Map.of()).status());
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> ValueSearch.search(constraints, List.of("a"), Map.of()));
+        assertEquals("no starting value for variable b", failure.getMessage());
     }
 }
