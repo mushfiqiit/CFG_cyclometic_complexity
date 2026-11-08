@@ -4,6 +4,9 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
+group = "io.github.mushfiqiit"
+version = "1.0.0-SNAPSHOT"
+
 repositories {
     mavenCentral()
 }
@@ -27,7 +30,7 @@ javafx {
 }
 
 application {
-    mainClass = "cfg.Main"
+    mainClass = "io.github.mushfiqiit.cfg.Main"
 }
 
 tasks.named<JavaExec>("run") {

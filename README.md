@@ -77,7 +77,7 @@ Run `./gradlew run --args="--help"` to see the usage message.
 
 The tests live in `src/test/java` and use JUnit 5. Most of them pin down the program's current behavior, so a change that alters the graph, the counts or the printed reports makes them fail. Tests for bugs that are not fixed yet are tagged `known-bug`; they state the correct behavior, are left out of `./gradlew test`, and run only with `./gradlew knownBugTest`. When a bug is fixed, remove the tag from its test. There are currently no known-bug tests.
 
-The test programs are in `src/test/resources/cfg`. The tests do not use `test.txt`, so you can change it freely. HTML reports are written to `build/reports/tests/`.
+The test programs are in `src/test/resources/io/github/mushfiqiit/cfg`. The tests do not use `test.txt`, so you can change it freely. HTML reports are written to `build/reports/tests/`.
 
 GitHub Actions runs `./gradlew build` on Linux, macOS and Windows for every push and pull request, and reports the known-bug tests without failing the workflow (`.github/workflows/build.yml`).
 
