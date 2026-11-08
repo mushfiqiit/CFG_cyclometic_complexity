@@ -20,14 +20,14 @@ class VariableConditionAnalysisTest {
                 "Test Case Data",
                 "==============",
                 "",
-                "Test input values",
-                "-----------------",
+                "Variables",
+                "---------",
                 "  Variable  Value",
                 "  --------  -----",
-                "  a             0",
-                "  b             0",
-                "  c             0",
-                "  k             0",
+                "  a         input",
+                "  b         input",
+                "  c         input",
+                "  k         input",
                 "",
                 "Conditions to cover",
                 "-------------------",
@@ -37,6 +37,25 @@ class VariableConditionAnalysisTest {
                 "  2     5  a>b        >         a, b",
                 "  3     8  a==b       ==        a, b",
                 "  4    11  a>c        >         a, c",
+                "",
+                "Test cases",
+                "----------",
+                "  Each condition is made true in one test case and false in another, using inputs",
+                "  that reach it. Inputs are the values at the start of the function; assignments",
+                "  made before a condition is checked are not taken into account.",
+                "",
+                "  #  Covers        Outcome  Inputs",
+                "  -  ------------  -------  -------------------",
+                "  1  line 4: k>0   true     a=0, b=0, c=0, k=1",
+                "  2  line 4: k>0   false    a=0, b=0, c=0, k=0",
+                "  3  line 5: a>b   true     a=1, b=0, c=0, k=1",
+                "  4  line 5: a>b   false    a=0, b=0, c=0, k=1",
+                "  5  line 8: a==b  true     a=0, b=0, c=0, k=1",
+                "  6  line 8: a==b  false    a=0, b=1, c=0, k=1",
+                "  7  line 11: a>c  true     a=0, b=1, c=-1, k=1",
+                "  8  line 11: a>c  false    a=0, b=1, c=0, k=1",
+                "",
+                "  Values found for 8 of 8 condition outcomes.",
                 ""), output);
     }
 
@@ -46,6 +65,7 @@ class VariableConditionAnalysisTest {
 
         assertTrue(output.contains("  No int variables were declared."));
         assertTrue(output.contains("  No if, else if or while conditions were found."));
+        assertTrue(output.contains("  No test cases: there are no conditions to cover."));
     }
 
     @Test
@@ -53,13 +73,14 @@ class VariableConditionAnalysisTest {
         String output = print(out -> VariableConditionAnalysis.run(List.of("if(){", "}"), out));
 
         assertTrue(output.contains("  1     1  -          -         -"));
+        assertTrue(output.contains("no values: the condition is too complex to solve"));
     }
 
     @Test
     void declarationEndingInACommaAddsNoBlankVariable() {
         String output = print(out -> VariableConditionAnalysis.run(List.of("  int y, "), out));
 
-        assertTrue(output.contains("  y             0\n\n"));
+        assertTrue(output.contains("  y         input\n\n"));
     }
 
     /** Reads the variable names from the "Test input values" table of an option 2 report. */
@@ -96,5 +117,24 @@ class VariableConditionAnalysisTest {
                 "int;"), out));
 
         assertEquals(List.of("a", "b", "c", "d", "tabbed", "p", "arr", "n"), variableNames(output));
+    }
+
+    @Test
+    void variablesShowWhereTheirValuesComeFrom() {
+        String output = print(out -> VariableConditionAnalysis.run(List.of(
+                "int main(void) {",
+                "    int a, limit = 10, n = f(1);",
+                "    for (int i = 0; i < 3; i++) {",
+                "    }",
+                "    if (z > 0) {",
+                "    }",
+                "}"), out));
+
+        assertTrue(output.contains(String.join("\n",
+                "  a         input",
+                "  limit     10 (set when declared)",
+                "  n         computed in the code",
+                "  i         computed in the code",
+                "  z         input (used but not declared)")), output);
     }
 }

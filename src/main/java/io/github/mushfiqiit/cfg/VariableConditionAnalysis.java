@@ -1,27 +1,27 @@
 package io.github.mushfiqiit.cfg;
 
+import io.github.mushfiqiit.cfg.TestCaseGenerator.TestCase;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Runs the test case data option: lists the {@code int} variables declared in C source lines,
- * including those declared in a {@code for} loop, each with a test value of 0, and the conditions
- * of their {@code if}, {@code else if} and {@code while} statements.
+ * Runs the test case data option: lists the function's {@code int} variables and the conditions
+ * of its {@code if}, {@code else if} and {@code while} statements, then generates a test case for
+ * each outcome of each condition.
  */
 public final class VariableConditionAnalysis {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_]\\w*");
+    private static final Pattern INTEGER = Pattern.compile("-?\\d+");
 
-    /** A condition and the 1-based number of the line it was found on. */
-    private record FoundCondition(int lineNumber, Condition condition) {
-    }
-
-    private final List<FoundCondition> conditions = new ArrayList<>();
-    private final List<Variable> variables = new ArrayList<>();
+    private final Map<String, DeclaredVariable> variables = new LinkedHashMap<>();
+    private List<ConditionSite> conditions = List.of();
 
     /** Creates an empty analysis. Use {@link #run(List, PrintStream)} to analyze a source file. */
     private VariableConditionAnalysis() {
@@ -32,7 +32,8 @@ public final class VariableConditionAnalysis {
     // ***************************************************************************
 
     /**
-     * Analyzes a source file and prints the test input values and the conditions to cover.
+     * Analyzes a source file and prints its variables, its conditions and a test case for each
+     * outcome of each condition.
      *
      * @param lines the source lines to analyze, with comments removed
      * @param out where to print the report
@@ -44,32 +45,21 @@ public final class VariableConditionAnalysis {
     }
 
     /**
-     * Collects the conditions and declared variables from every line.
+     * Collects the declared variables from every line, and the conditions with the paths that
+     * lead to them.
      *
      * @param lines the source lines to scan
      */
     private void collect(List<String> lines) {
-        for (int index = 0; index < lines.size(); index++) {
-            String line = lines.get(index);
-            if (isConditional(line)) {
-                conditions.add(new FoundCondition(index + 1, Condition.from(line)));
-            } else if (SyntaxIdentifier.isFor(line)) {
+        for (String line : lines) {
+            if (SyntaxIdentifier.isFor(line)) {
                 parseForInitializer(line);
-            } else if (SyntaxIdentifier.isIntDeclaration(line)) {
-                parseDeclaration(line);
+            } else if (!SyntaxIdentifier.isIf(line) && !SyntaxIdentifier.isElse(line)
+                    && !SyntaxIdentifier.isWhile(line) && SyntaxIdentifier.isIntDeclaration(line)) {
+                parseDeclaration(line, false);
             }
         }
-    }
-
-    /**
-     * Tells whether a line holds a condition to parse.
-     *
-     * @param line the source line to check
-     * @return true for {@code if}, {@code else if} and {@code while} lines; {@code for} lines are
-     *         not included
-     */
-    private static boolean isConditional(String line) {
-        return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElseIf(line) || SyntaxIdentifier.isWhile(line);
+        conditions = ConditionPaths.find(lines);
     }
 
     // ***************************************************************************
@@ -78,7 +68,7 @@ public final class VariableConditionAnalysis {
 
     /**
      * Adds the variables declared in a {@code for} loop's initializer, such as {@code i} in
-     * {@code for (int i = 0; i < n; i++)}.
+     * {@code for (int i = 0; i < n; i++)}. The loop changes them, so they are computed.
      *
      * @param line a {@code for} line
      */
@@ -90,24 +80,37 @@ public final class VariableConditionAnalysis {
         }
         String initializer = line.substring(open + 1, end);
         if (SyntaxIdentifier.isIntDeclaration(initializer)) {
-            parseDeclaration(initializer);
+            parseDeclaration(initializer, true);
         }
     }
 
     /**
-     * Adds the name of each variable in an {@code int} declaration, such as {@code a} and
-     * {@code b} in {@code int a = 5, b;}. Initial values, pointer stars and array sizes are not
-     * part of a name.
+     * Adds each variable in an {@code int} declaration, such as {@code a} and {@code b} in
+     * {@code int a = 5, b;}. A variable without a value is an input, one set to an integer is
+     * fixed, and one set by any other expression is computed. A name declared twice keeps its
+     * first declaration.
      *
      * @param declaration text that starts with the keyword {@code int}
+     * @param loopCounter whether the variables belong to a {@code for} loop, which changes them
      */
-    private void parseDeclaration(String declaration) {
+    private void parseDeclaration(String declaration, boolean loopCounter) {
         String declarators = declaration.strip().substring("int".length());
         for (String declarator : splitDeclarators(declarators)) {
             String name = declaredName(declarator);
-            if (!name.isEmpty()) {
-                variables.add(Variable.from(name));
+            if (name.isEmpty() || variables.containsKey(name)) {
+                continue;
             }
+            String[] parts = declarator.split("=", 2);
+            String initializer = parts.length == 2 ? parts[1].strip() : "";
+            DeclaredVariable variable;
+            if (loopCounter || (!initializer.isEmpty() && !INTEGER.matcher(initializer).matches())) {
+                variable = DeclaredVariable.computed(name);
+            } else if (initializer.isEmpty()) {
+                variable = DeclaredVariable.input(name);
+            } else {
+                variable = DeclaredVariable.fixed(name, Integer.parseInt(initializer));
+            }
+            variables.put(name, variable);
         }
     }
 
@@ -161,47 +164,103 @@ public final class VariableConditionAnalysis {
     // ***************************************************************************
 
     /**
-     * Prints the test input values, then the conditions to cover.
+     * Prints the variables, the conditions to cover and the generated test cases.
      *
      * @param out where to print
      */
     private void printResults(PrintStream out) {
         ConsoleText.printTitle(out, "Test Case Data");
-
-        ConsoleText.printSection(out, "Test input values");
-        if (variables.isEmpty()) {
-            out.println("  No int variables were declared.");
-        } else {
-            ConsoleTable table = new ConsoleTable("Variable", "Value").alignRight(1);
-            variables.forEach(variable -> table.addRow(variable.name(), variable.value()));
-            table.print(out);
-        }
-
-        ConsoleText.printSection(out, "Conditions to cover");
-        if (conditions.isEmpty()) {
-            out.println("  No if, else if or while conditions were found.");
-        } else {
-            ConsoleTable table = new ConsoleTable("#", "Line", "Condition", "Operator", "Operands")
-                    .alignRight(0, 1);
-            for (int i = 0; i < conditions.size(); i++) {
-                FoundCondition found = conditions.get(i);
-                Condition condition = found.condition();
-                table.addRow(i + 1, found.lineNumber(), orDash(condition.getText()),
-                        orDash(condition.getComparisonSign()), operandNames(condition));
-            }
-            table.print(out);
-        }
+        printVariables(out);
+        printConditions(out);
+        printTestCases(out);
     }
 
     /**
-     * Lists a condition's operand names separated by commas.
+     * Prints each variable a test case uses and where its value comes from.
      *
-     * @param condition the condition to describe
-     * @return the operand names, or {@code -} if there are none
+     * @param out where to print
      */
-    private static String operandNames(Condition condition) {
-        String names = condition.getOperands().stream().map(Variable::name).collect(Collectors.joining(", "));
-        return orDash(names);
+    private void printVariables(PrintStream out) {
+        ConsoleText.printSection(out, "Variables");
+        List<String> undeclared = TestCaseGenerator.inputNames(conditions, variables).stream()
+                .filter(name -> !variables.containsKey(name)).toList();
+        if (variables.isEmpty() && undeclared.isEmpty()) {
+            out.println("  No int variables were declared.");
+            return;
+        }
+        ConsoleTable table = new ConsoleTable("Variable", "Value");
+        variables.values().forEach(variable -> table.addRow(variable.name(), variable.describeSource()));
+        undeclared.forEach(name -> table.addRow(name, "input (used but not declared)"));
+        table.print(out);
+    }
+
+    /**
+     * Prints each condition with its operator and operands.
+     *
+     * @param out where to print
+     */
+    private void printConditions(PrintStream out) {
+        ConsoleText.printSection(out, "Conditions to cover");
+        if (conditions.isEmpty()) {
+            out.println("  No if, else if or while conditions were found.");
+            return;
+        }
+        ConsoleTable table = new ConsoleTable("#", "Line", "Condition", "Operator", "Operands").alignRight(0, 1);
+        for (int i = 0; i < conditions.size(); i++) {
+            Condition condition = conditions.get(i).condition();
+            table.addRow(i + 1, conditions.get(i).lineNumber(), orDash(condition.getText()),
+                    orDash(condition.getComparisonSign()), orDash(String.join(", ", condition.getOperands())));
+        }
+        table.print(out);
+    }
+
+    /**
+     * Prints one test case per outcome of each condition, with the inputs that produce it.
+     *
+     * @param out where to print
+     */
+    private void printTestCases(PrintStream out) {
+        ConsoleText.printSection(out, "Test cases");
+        if (conditions.isEmpty()) {
+            out.println("  No test cases: there are no conditions to cover.");
+            return;
+        }
+        out.println("  Each condition is made true in one test case and false in another, using inputs");
+        out.println("  that reach it. Inputs are the values at the start of the function; assignments");
+        out.println("  made before a condition is checked are not taken into account.");
+        out.println();
+
+        List<TestCase> cases = TestCaseGenerator.generate(conditions, variables);
+        ConsoleTable table = new ConsoleTable("#", "Covers", "Outcome", "Inputs").alignRight(0);
+        for (int i = 0; i < cases.size(); i++) {
+            TestCase testCase = cases.get(i);
+            table.addRow(i + 1, testCase.site().describe(), testCase.outcome(), describeInputs(testCase));
+        }
+        table.print(out);
+
+        long covered = cases.stream().filter(testCase -> testCase.inputs().isPresent()).count();
+        out.println();
+        out.println("  Values found for " + covered + " of " + cases.size() + " condition outcomes.");
+    }
+
+    /**
+     * Describes a test case's inputs, such as {@code "a=1, b=0"}.
+     *
+     * @param testCase the test case
+     * @return the inputs, {@code "none needed"} if there are no input variables, or the reason no
+     *         values were found
+     */
+    private static String describeInputs(TestCase testCase) {
+        if (testCase.inputs().isEmpty()) {
+            return "no values: " + testCase.reason();
+        }
+        Map<String, Integer> inputs = testCase.inputs().get();
+        if (inputs.isEmpty()) {
+            return "none needed";
+        }
+        return inputs.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
     }
 
     /**

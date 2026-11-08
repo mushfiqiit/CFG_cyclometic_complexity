@@ -1,9 +1,13 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +36,79 @@ class ComplexityAgreementTest {
 
             assertEquals(fromDecisions, fromGraph, () -> "complexities differ for:\n" + String.join("\n", lines));
         }
+    }
+
+    @Test
+    void generatedTestCasesReachTheirConditionWithTheRightOutcome() {
+        Random random = new Random(20261108);
+        int withValues = 0;
+        int contradictions = 0;
+        for (int program = 0; program < PROGRAMS; program++) {
+            List<String> lines = new ArrayList<>(List.of("int main(void) {", "    int a, b, k;"));
+            addStatements(lines, random, 1);
+            lines.add("}");
+            Map<String, DeclaredVariable> declared = new LinkedHashMap<>();
+            List.of("a", "b", "k").forEach(name -> declared.put(name, DeclaredVariable.input(name)));
+
+            for (TestCaseGenerator.TestCase testCase : TestCaseGenerator.generate(ConditionPaths.find(lines), declared)) {
+                List<ConditionSite.Requirement> required = new ArrayList<>(testCase.site().path());
+                required.add(new ConditionSite.Requirement(testCase.site().lineNumber(), testCase.site().condition(),
+                        testCase.outcome()));
+                if (testCase.inputs().isPresent()) {
+                    withValues++;
+                    assertTrue(allHold(required, testCase.inputs().get()),
+                            () -> "values do not reach " + testCase.site().describe() + " in:\n" + String.join("\n", lines));
+                } else {
+                    contradictions++;
+                    assertEquals("this outcome contradicts a condition on the way here", testCase.reason());
+                    assertTrue(noValuesInRangeWork(required),
+                            () -> "a reachable outcome was reported as impossible: " + testCase.site().describe()
+                                    + " " + testCase.outcome() + " in:\n" + String.join("\n", lines));
+                }
+            }
+        }
+        assertTrue(withValues > 1000, "too few test cases were checked: " + withValues);
+        assertTrue(contradictions > 0, "no impossible outcomes were checked");
+    }
+
+    /** Tries every value from -8 to 8 for a, b and k; the generated constants are all between 0 and 4. */
+    private static boolean noValuesInRangeWork(List<ConditionSite.Requirement> required) {
+        Map<String, Integer> values = new HashMap<>();
+        for (int a = -8; a <= 8; a++) {
+            for (int b = -8; b <= 8; b++) {
+                for (int k = -8; k <= 8; k++) {
+                    values.put("a", a);
+                    values.put("b", b);
+                    values.put("k", k);
+                    if (allHold(required, values)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Evaluates each required comparison independently of the generator. */
+    private static boolean allHold(List<ConditionSite.Requirement> required, Map<String, Integer> values) {
+        for (ConditionSite.Requirement step : required) {
+            List<String> operands = step.condition().getOperands();
+            int left = value(operands.get(0), values);
+            int right = value(operands.get(1), values);
+            boolean holds = switch (step.condition().getComparisonSign()) {
+                case ">" -> left > right;
+                case "<" -> left < right;
+                default -> throw new AssertionError("unexpected operator in " + step.condition().getText());
+            };
+            if (holds != step.outcome()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int value(String operand, Map<String, Integer> values) {
+        return operand.matches("-?\\d+") ? Integer.parseInt(operand) : values.get(operand);
     }
 
     /**

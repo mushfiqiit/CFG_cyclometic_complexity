@@ -11,17 +11,13 @@ import org.junit.jupiter.api.Test;
 /** Pins down how conditions are parsed from {@code if}, {@code else if} and {@code while} lines. */
 class ConditionTest {
 
-    private static List<String> operandNames(Condition condition) {
-        return condition.getOperands().stream().map(Variable::name).toList();
-    }
-
     @Test
     void parsesASimpleComparison() {
         Condition condition = Condition.from("\t    while(k>0){");
 
         assertEquals("k>0", condition.getText());
         assertEquals(">", condition.getComparisonSign());
-        assertEquals(List.of("k", "0"), operandNames(condition));
+        assertEquals(List.of("k", "0"), condition.getOperands());
     }
 
     @Test
@@ -30,7 +26,7 @@ class ConditionTest {
 
         assertEquals("a <= b", condition.getText());
         assertEquals("<=", condition.getComparisonSign());
-        assertEquals(List.of("a", "b"), operandNames(condition));
+        assertEquals(List.of("a", "b"), condition.getOperands());
     }
 
     @Test
@@ -38,7 +34,7 @@ class ConditionTest {
         Condition condition = Condition.from("if(a){");
 
         assertNull(condition.getComparisonSign());
-        assertEquals(List.of("a"), operandNames(condition));
+        assertEquals(List.of("a"), condition.getOperands());
     }
 
     @Test
@@ -54,12 +50,7 @@ class ConditionTest {
         Condition condition = Condition.from("if(a>b>=c){");
 
         assertEquals(">=", condition.getComparisonSign());
-        assertEquals(List.of("a", "b", "c"), operandNames(condition));
-    }
-
-    @Test
-    void operandsHaveATestValueOfZero() {
-        Condition.from("if(a>b){").getOperands().forEach(operand -> assertEquals(0, operand.value()));
+        assertEquals(List.of("a", "b", "c"), condition.getOperands());
     }
 
     @Test
@@ -67,6 +58,6 @@ class ConditionTest {
         Condition condition = Condition.from("if(a>b){");
 
         assertThrows(UnsupportedOperationException.class,
-                () -> condition.getOperands().add(Variable.from("c")));
+                () -> condition.getOperands().add("c"));
     }
 }

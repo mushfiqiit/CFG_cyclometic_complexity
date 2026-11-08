@@ -26,7 +26,7 @@ Pass the C file to analyze with `--args`. Relative paths are resolved from the p
 The program then asks you to choose an analysis:
 
 - `1` prints the control flow graph and the cyclomatic complexity, then opens the graph window. Nodes are labelled with their line numbers; double-click a node to see its source line.
-- `2` prints the test case data: the declared `int` variables with their test values, and the conditions to cover.
+- `2` prints the test case data: the function's `int` variables, the conditions to cover, and a test case for each outcome of each condition, with input values that reach it.
 
 Line numbers in the output count from 1, as in an editor. For example, option 2 on `test.txt` prints:
 
@@ -34,14 +34,14 @@ Line numbers in the output count from 1, as in an editor. For example, option 2 
 Test Case Data
 ==============
 
-Test input values
------------------
+Variables
+---------
   Variable  Value
   --------  -----
-  a             0
-  b             0
-  c             0
-  k             0
+  a         input
+  b         input
+  c         input
+  k         input
 
 Conditions to cover
 -------------------
@@ -51,7 +51,28 @@ Conditions to cover
   2     5  a>b        >         a, b
   3     8  a==b       ==        a, b
   4    11  a>c        >         a, c
+
+Test cases
+----------
+  Each condition is made true in one test case and false in another, using inputs
+  that reach it. Inputs are the values at the start of the function; assignments
+  made before a condition is checked are not taken into account.
+
+  #  Covers        Outcome  Inputs
+  -  ------------  -------  -------------------
+  1  line 4: k>0   true     a=0, b=0, c=0, k=1
+  2  line 4: k>0   false    a=0, b=0, c=0, k=0
+  3  line 5: a>b   true     a=1, b=0, c=0, k=1
+  4  line 5: a>b   false    a=0, b=0, c=0, k=1
+  5  line 8: a==b  true     a=0, b=0, c=0, k=1
+  6  line 8: a==b  false    a=0, b=1, c=0, k=1
+  7  line 11: a>c  true     a=0, b=1, c=-1, k=1
+  8  line 11: a>c  false    a=0, b=1, c=0, k=1
+
+  Values found for 8 of 8 condition outcomes.
 ```
+
+Each test case gives values for the input variables, those declared without a value, such that the condition is reached and has the stated outcome. For example, case 6 needs `k > 0` to enter the loop and `a > b` to be false before `a == b` is checked, and makes `a == b` false. A variable declared with a number, such as `int x = 5;`, keeps that value, and the values are those at the start of the function: assignments made before a condition are not taken into account. When an outcome cannot be reached, or a condition is too complex to solve (anything beyond comparing two variables or numbers, such as `(a + b) > 3` or `a > b && b > 0`), the report says so instead of giving values.
 
 Option 1 ends with both complexity results. They are worked out independently, from the graph and from the decision points (`if`, `else if`, `for` and `while`), and they agree for well-structured code:
 

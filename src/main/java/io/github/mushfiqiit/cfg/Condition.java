@@ -8,7 +8,7 @@ import java.util.List;
 public class Condition {
 
     private final String text;
-    private final List<Variable> variables = new ArrayList<>();
+    private final List<String> operands = new ArrayList<>();
     private String comparisonSign;
 
     /**
@@ -33,7 +33,7 @@ public class Condition {
      */
     public static Condition from(String line) {
         Condition condition = new Condition(conditionText(line));
-        StringBuilder variable = new StringBuilder();
+        StringBuilder operand = new StringBuilder();
         StringBuilder comparison = new StringBuilder();
         boolean insideParentheses = false;
 
@@ -41,9 +41,9 @@ public class Condition {
             if (insideParentheses && !isConditionDelimiter(character)) {
                 if (SyntaxIdentifier.isComparisonSign(character)) {
                     comparison.append(character);
-                    condition.addPendingVariable(variable);
+                    condition.addPendingOperand(operand);
                 } else if (character != ' ') {
-                    variable.append(character);
+                    operand.append(character);
                     condition.applyPendingComparison(comparison);
                 }
             }
@@ -51,7 +51,7 @@ public class Condition {
                 insideParentheses = true;
             }
         }
-        condition.addPendingVariable(variable);
+        condition.addPendingOperand(operand);
         return condition;
     }
 
@@ -82,12 +82,12 @@ public class Condition {
     /**
      * Adds the operand read so far to this condition, then clears it. Does nothing if it is empty.
      *
-     * @param variable the characters of the operand read so far
+     * @param operand the characters of the operand read so far
      */
-    private void addPendingVariable(StringBuilder variable) {
-        if (variable.length() > 0) {
-            variables.add(Variable.from(variable.toString()));
-            variable.setLength(0);
+    private void addPendingOperand(StringBuilder operand) {
+        if (operand.length() > 0) {
+            operands.add(operand.toString());
+            operand.setLength(0);
         }
     }
 
@@ -126,11 +126,12 @@ public class Condition {
     }
 
     /**
-     * Returns the operands of the comparison.
+     * Returns the operands of the comparison, such as {@code "k"} and {@code "0"} for
+     * {@code k > 0}.
      *
-     * @return the operands in the order they appear, as a read-only list
+     * @return the operands' text in the order they appear, as a read-only list
      */
-    public List<Variable> getOperands() {
-        return Collections.unmodifiableList(variables);
+    public List<String> getOperands() {
+        return Collections.unmodifiableList(operands);
     }
 }
