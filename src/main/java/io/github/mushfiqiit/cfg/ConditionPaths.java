@@ -2,7 +2,6 @@ package io.github.mushfiqiit.cfg;
 
 import io.github.mushfiqiit.cfg.ConditionSite.Requirement;
 import io.github.mushfiqiit.cfg.SourceTree.Branch;
-import io.github.mushfiqiit.cfg.SourceTree.Function;
 import io.github.mushfiqiit.cfg.SourceTree.IfChain;
 import io.github.mushfiqiit.cfg.SourceTree.Line;
 import io.github.mushfiqiit.cfg.SourceTree.Loop;
@@ -27,34 +26,15 @@ final class ConditionPaths {
 
     /**
      * Finds every {@code if}, {@code else if} and {@code while} condition in line order, with the
-     * path that leads to it. If the first line of code is itself an {@code if} or a loop rather
-     * than a function header, it is treated as the first statement.
+     * path that leads to it.
      *
-     * @param code the source lines with comments removed
+     * @param source the source to search
      * @return the conditions with their paths; empty if there is no code
      */
-    static List<ConditionSite> find(List<String> code) {
+    static List<ConditionSite> find(ParsedSource source) {
         List<ConditionSite> sites = new ArrayList<>();
-        SourceParser.parse(code).ifPresent(function -> walk(statementsOf(function), List.of(), sites));
+        walk(source.statements(), List.of(), sites);
         return sites;
-    }
-
-    /**
-     * Returns the statements to walk: the function's body, or, when the first line is a
-     * condition or loop, that line with its block as the only statement.
-     *
-     * @param function the parsed function
-     * @return the statements, in order
-     */
-    private static List<Statement> statementsOf(Function function) {
-        String header = function.header().text();
-        if (SyntaxIdentifier.isLoop(header)) {
-            return List.of(new Loop(function.header(), function.body()));
-        }
-        if (SyntaxIdentifier.isIf(header) || SyntaxIdentifier.isElse(header)) {
-            return List.of(new IfChain(List.of(new Branch(function.header(), function.body()))));
-        }
-        return function.body().statements();
     }
 
     // ***************************************************************************

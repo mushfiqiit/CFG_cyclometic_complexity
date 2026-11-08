@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * <p>The supported layout is one function, optionally preceded by {@code #} lines such as
  * {@code #include}, with one statement per line. Each {@code if}, {@code else if}, {@code else},
  * {@code for} and {@code while} line ends with <code>{</code>, and each <code>}</code> is on its
- * own line. The code to check must already have its comments removed by {@link CommentStripper}.
+ * own line. The source must have been read from code whose comments {@link CommentStripper} removed.
  */
 final class SourceFormatChecker {
 
@@ -54,10 +54,11 @@ final class SourceFormatChecker {
      * for every line; problems with the overall structure are only checked when every line is
      * well formed, because a misplaced brace would make them misleading.
      *
-     * @param code the source lines with comments removed; line numbers count from 1
+     * @param source the source to check, with comments removed; line numbers count from 1
      * @return the problems found, in line order; empty if the code can be analyzed
      */
-    static List<Problem> check(List<String> code) {
+    static List<Problem> check(ParsedSource source) {
+        List<String> code = source.lines();
         int functionLine = firstCodeLine(code);
         if (functionLine < 0) {
             return List.of(new Problem(Math.max(code.size(), 1),
@@ -75,7 +76,7 @@ final class SourceFormatChecker {
             checkLine(code.get(index).strip(), index + 1, problems);
         }
         if (problems.isEmpty()) {
-            SourceParser.parse(code).ifPresent(function -> checkStructure(code, function, problems));
+            source.function().ifPresent(function -> checkStructure(code, function, problems));
         }
         return problems;
     }

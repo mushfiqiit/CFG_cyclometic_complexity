@@ -13,7 +13,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void sampleProgramReport() {
-        String output = print(out -> VariableConditionAnalysis.run(program("sample.c"), out));
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(program("sample.c")), out));
 
         assertEquals(String.join("\n",
                 "",
@@ -61,7 +61,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void saysSoWhenThereAreNoVariablesOrConditions() {
-        String output = print(out -> VariableConditionAnalysis.run(List.of("\tint main(){", "}"), out));
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(List.of("\tint main(){", "}")), out));
 
         assertTrue(output.contains("  No int variables were declared."));
         assertTrue(output.contains("  No if, else if or while conditions were found."));
@@ -70,7 +70,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void emptyConditionIsShownWithDashes() {
-        String output = print(out -> VariableConditionAnalysis.run(List.of("if(){", "}"), out));
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(List.of("if(){", "}")), out));
 
         assertTrue(output.contains("  1     1  -          -         -"));
         assertTrue(output.contains("no values: the condition is too complex to solve"));
@@ -78,7 +78,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void declarationEndingInACommaAddsNoBlankVariable() {
-        String output = print(out -> VariableConditionAnalysis.run(List.of("  int y, "), out));
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(List.of("  int y, ")), out));
 
         assertTrue(output.contains("  y         input\n\n"));
     }
@@ -101,34 +101,34 @@ class VariableConditionAnalysisTest {
 
     @Test
     void typicalProgramListsOnlyDeclaredVariablesIncludingForLoopCounters() {
-        String output = print(out -> VariableConditionAnalysis.run(program("typical.c"), out));
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(program("typical.c")), out));
 
         assertEquals(List.of("x", "y", "i"), variableNames(output));
     }
 
     @Test
     void namesAreReadWithoutInitialValuesPointersOrArraySizes() {
-        String output = print(out -> VariableConditionAnalysis.run(List.of(
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(List.of(
                 "    int a,b ,c , d;",
                 "\tint tabbed;",
                 "    int *p = &a, arr[3] = {1, 2, 3}, n = f(1, 2);",
                 "integer z;",
                 "int f(int x);",
-                "int;"), out));
+                "int;")), out));
 
         assertEquals(List.of("a", "b", "c", "d", "tabbed", "p", "arr", "n"), variableNames(output));
     }
 
     @Test
     void variablesShowWhereTheirValuesComeFrom() {
-        String output = print(out -> VariableConditionAnalysis.run(List.of(
+        String output = print(out -> VariableConditionAnalysis.run(ParsedSource.of(List.of(
                 "int main(void) {",
                 "    int a, limit = 10, n = f(1);",
                 "    for (int i = 0; i < 3; i++) {",
                 "    }",
                 "    if (z > 0) {",
                 "    }",
-                "}"), out));
+                "}")), out));
 
         assertTrue(output.contains(String.join("\n",
                 "  a         input",

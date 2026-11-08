@@ -17,7 +17,7 @@ class ControlFlowGraphBuilderTest {
 
     @Test
     void rootIsTheFirstLineAfterThePreamble() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(program("sample.c"));
+        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("sample.c")));
 
         assertEquals(1, builder.root().getNumber());
         assertEquals("\tint main(){", builder.root().getStatement());
@@ -25,14 +25,14 @@ class ControlFlowGraphBuilderTest {
 
     @Test
     void linesStartingWithHashOrSlashArePreamble() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(program("two-preamble-lines.c"));
+        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("two-preamble-lines.c")));
 
         assertEquals(2, builder.root().getNumber());
     }
 
     @Test
     void blankLineInThePreambleIsSkipped() {
-        ControlFlowGraphBuilder builder = assertDoesNotThrow(() -> ControlFlowGraphBuilder.from(program("typical.c")));
+        ControlFlowGraphBuilder builder = assertDoesNotThrow(() -> ControlFlowGraphBuilder.from(ParsedSource.of(program("typical.c"))));
 
         assertEquals("int main(void) {", builder.root().getStatement());
     }
@@ -164,7 +164,7 @@ class ControlFlowGraphBuilderTest {
 
     @Test
     void buildCanOnlyBeCalledOnce() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(program("sample.c"));
+        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("sample.c")));
         builder.build();
 
         assertThrows(IllegalStateException.class, builder::build);

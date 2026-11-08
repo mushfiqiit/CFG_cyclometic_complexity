@@ -13,14 +13,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 class SourceFormatCheckerTest {
 
     private static List<String> problems(String... lines) {
-        return SourceFormatChecker.check(CommentStripper.strip(List.of(lines))).stream()
+        return SourceFormatChecker.check(ParsedSource.of(CommentStripper.strip(List.of(lines)))).stream()
                 .map(SourceFormatChecker.Problem::toString).toList();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"sample.c", "typical.c", "two-preamble-lines.c"})
     void testProgramsAreSupported(String name) {
-        assertEquals(List.of(), SourceFormatChecker.check(CommentStripper.strip(program(name))));
+        assertEquals(List.of(), SourceFormatChecker.check(ParsedSource.of(CommentStripper.strip(program(name)))));
     }
 
     @Test

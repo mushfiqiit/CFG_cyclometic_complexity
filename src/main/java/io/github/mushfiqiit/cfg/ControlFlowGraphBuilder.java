@@ -14,9 +14,9 @@ import java.util.List;
 /**
  * Builds a {@link ControlFlowGraph} from C source lines, with one node per non-blank line.
  *
- * <p>The lines are first read into a {@link SourceTree} by {@link SourceParser}; the graph is then
- * linked by walking that tree. Create a builder with {@link #from(List)}, which reads the
- * structure and creates the root, then call {@link #build()} once to link the remaining lines.
+ * <p>The graph is linked by walking the source's {@link SourceTree}. Create a builder with
+ * {@link #from(ParsedSource)}, which creates the root, then call {@link #build()} once to link the
+ * remaining lines.
  *
  * @author sikde
  */
@@ -44,17 +44,15 @@ public final class ControlFlowGraphBuilder {
     // ***************************************************************************
 
     /**
-     * Creates a builder for a source file. The first line that is not blank or preamble becomes
-     * the root; it is normally the {@code main} function's opening line.
+     * Creates a builder for parsed source code. The function's opening line, normally the
+     * {@code main} function's, becomes the root.
      *
-     * @param lines the source lines; each line's index becomes its node number
-     * @return a builder that has found the root but not linked any other lines yet
-     * @throws IllegalArgumentException if every line is blank or preamble
+     * @param source the source to build the graph of; each line's index becomes its node number
+     * @return a builder that has its root but has not linked any other lines yet
+     * @throws IllegalArgumentException if the source has no code
      */
-    public static ControlFlowGraphBuilder from(List<String> lines) {
-        Function function = SourceParser.parse(lines)
-                .orElseThrow(() -> new IllegalArgumentException("there is no code to build a graph from"));
-        return new ControlFlowGraphBuilder(lines, function);
+    static ControlFlowGraphBuilder from(ParsedSource source) {
+        return new ControlFlowGraphBuilder(source.lines(), source.requireFunction());
     }
 
     // ***************************************************************************

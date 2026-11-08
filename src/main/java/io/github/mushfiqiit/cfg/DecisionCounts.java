@@ -10,6 +10,19 @@ package io.github.mushfiqiit.cfg;
  */
 public record DecisionCounts(int ifs, int elseIfs, int loops) {
 
+    /** No decision points at all. */
+    static final DecisionCounts NONE = new DecisionCounts(0, 0, 0);
+
+    /**
+     * Adds two sets of counts.
+     *
+     * @param other the counts to add
+     * @return the sum of each count
+     */
+    DecisionCounts plus(DecisionCounts other) {
+        return new DecisionCounts(ifs + other.ifs, elseIfs + other.elseIfs, loops + other.loops);
+    }
+
     /**
      * Returns the number of decision points: all the counted lines together.
      *

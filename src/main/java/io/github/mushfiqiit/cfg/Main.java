@@ -101,8 +101,8 @@ public final class Main {
         }
         out.println("Source file: " + sourceFile + " (" + lines.size() + " lines)");
 
-        List<String> code = CommentStripper.strip(lines);
-        List<SourceFormatChecker.Problem> problems = SourceFormatChecker.check(code);
+        ParsedSource source = ParsedSource.of(CommentStripper.strip(lines));
+        List<SourceFormatChecker.Problem> problems = SourceFormatChecker.check(source);
         if (!problems.isEmpty()) {
             printFormatProblems(err, sourceFile, problems);
             return EXIT_INPUT_ERROR;
@@ -115,9 +115,9 @@ public final class Main {
             return EXIT_INPUT_ERROR;
         }
         if (String.valueOf(choice.getAsInt()).equals(VARIABLE_CONDITION_OPTION)) {
-            VariableConditionAnalysis.run(code, out);
+            VariableConditionAnalysis.run(source, out);
         } else {
-            ComplexityAnalysis.run(code, out, showGraph);
+            ComplexityAnalysis.run(source, out, showGraph);
         }
         return EXIT_SUCCESS;
     }

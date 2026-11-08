@@ -149,6 +149,6 @@ class SourceParserTest {
 
     @Test
     void builderRejectsAFileWithoutCode() {
-        assertThrows(IllegalArgumentException.class, () -> ControlFlowGraphBuilder.from(List.of("#include <stdio.h>")));
+        assertThrows(IllegalArgumentException.class, () -> ControlFlowGraphBuilder.from(ParsedSource.of(List.of("#include <stdio.h>"))));
     }
 }

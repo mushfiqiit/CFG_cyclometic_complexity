@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class TestCaseGeneratorTest {
 
     private static List<TestCase> generate(Map<String, DeclaredVariable> declared, String... lines) {
-        return TestCaseGenerator.generate(ConditionPaths.find(List.of(lines)), declared);
+        return TestCaseGenerator.generate(ConditionPaths.find(ParsedSource.of(List.of(lines))), declared);
     }
 
     private static Map<String, DeclaredVariable> inputs(String... names) {
@@ -38,7 +38,7 @@ class TestCaseGeneratorTest {
 
     @Test
     void sampleProgramGetsReachingValuesForEveryOutcome() {
-        List<TestCase> cases = TestCaseGenerator.generate(ConditionPaths.find(program("sample.c")), inputs("a", "b", "c", "k"));
+        List<TestCase> cases = TestCaseGenerator.generate(ConditionPaths.find(ParsedSource.of(program("sample.c"))), inputs("a", "b", "c", "k"));
 
         assertEquals(List.of(
                 "true: a=0, b=0, c=0, k=1",
@@ -132,7 +132,7 @@ class TestCaseGeneratorTest {
     @Test
     void everyGeneratedCaseReachesItsConditionWithTheRightOutcome() {
         List<String> lines = program("sample.c");
-        List<TestCase> cases = TestCaseGenerator.generate(ConditionPaths.find(lines), inputs("a", "b", "c", "k"));
+        List<TestCase> cases = TestCaseGenerator.generate(ConditionPaths.find(ParsedSource.of(lines)), inputs("a", "b", "c", "k"));
 
         for (TestCase testCase : cases) {
             Map<String, Integer> values = testCase.inputs().orElseThrow();

@@ -139,7 +139,7 @@ final class TestSupport {
      * @return the graph
      */
     static ControlFlowGraph build(List<String> lines) {
-        return ControlFlowGraphBuilder.from(lines).build();
+        return ControlFlowGraphBuilder.from(ParsedSource.of(lines)).build();
     }
 
     /**

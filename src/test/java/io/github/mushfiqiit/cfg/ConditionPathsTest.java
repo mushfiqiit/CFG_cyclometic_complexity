@@ -11,7 +11,7 @@ class ConditionPathsTest {
 
     /** Describes each site as "line: condition <- path", with each step as "+cond" (true) or "-cond" (false). */
     private static List<String> paths(List<String> lines) {
-        return ConditionPaths.find(lines).stream().map(site -> site.lineNumber() + ": " + site.condition().getText()
+        return ConditionPaths.find(ParsedSource.of(lines)).stream().map(site -> site.lineNumber() + ": " + site.condition().getText()
                 + " <- " + String.join(" ", site.path().stream()
                         .map(step -> (step.outcome() ? "+" : "-") + step.condition().getText()).toList()))
                 .toList();

@@ -24,7 +24,7 @@ class GraphPrinterTest {
     @Test
     void entryPointShowsTheOneBasedLineAndStatement() {
         String output = print(out ->
-                new GraphPrinter(out).printEntryPoint(ControlFlowGraphBuilder.from(sample).root()));
+                new GraphPrinter(out).printEntryPoint(ControlFlowGraphBuilder.from(ParsedSource.of(sample)).root()));
 
         assertEquals("Entry point: line 2: int main(){\n", output);
     }
@@ -68,7 +68,7 @@ class GraphPrinterTest {
     @Test
     void complexityShowsBothFormulasAndTheDecisionPoints() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(sample))));
 
         assertEquals(String.join("\n",
                 "",
@@ -86,31 +86,31 @@ class GraphPrinterTest {
         ControlFlowGraph graph = build(lines);
 
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(lines))));
 
         // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
         assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
     }
 
+    /**
+     * Both results come from the same parsed source, so they only differ if the graph builder
+     * links lines wrongly; unsupported layouts are rejected earlier by the format checker. The
+     * disagreement is simulated here with decision counts that do not match the graph.
+     */
     @Test
     void warnsWhenTheTwoResultsDiffer() {
-        List<String> lines = List.of(
-                "int main(void) {",
-                "    if (a) { b = 1; } else { b = 2; }",
-                "    return 0;",
-                "}");
-        ControlFlowGraph graph = build(lines);
+        DecisionCounts tooMany = new DecisionCounts(1, 2, 2);
 
-        String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+        String output = print(out -> new GraphPrinter(out).printComplexity(graph, tooMany));
 
+        assertTrue(output.contains("M = D + 1 = 5 + 1 = 6"), output);
         assertTrue(output.contains("  Warning: the two results differ, so the graph may not match the code.\n"), output);
     }
 
     @Test
     void doesNotWarnWhenTheResultsAgree() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(sample))));
 
         assertTrue(!output.contains("Warning"));
     }

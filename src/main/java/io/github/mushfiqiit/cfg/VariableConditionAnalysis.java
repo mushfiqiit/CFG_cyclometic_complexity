@@ -1,5 +1,9 @@
 package io.github.mushfiqiit.cfg;
 
+import io.github.mushfiqiit.cfg.SourceTree.IfChain;
+import io.github.mushfiqiit.cfg.SourceTree.Loop;
+import io.github.mushfiqiit.cfg.SourceTree.Simple;
+import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import io.github.mushfiqiit.cfg.TestCaseGenerator.TestCase;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -23,7 +27,7 @@ public final class VariableConditionAnalysis {
     private final Map<String, DeclaredVariable> variables = new LinkedHashMap<>();
     private List<ConditionSite> conditions = List.of();
 
-    /** Creates an empty analysis. Use {@link #run(List, PrintStream)} to analyze a source file. */
+    /** Creates an empty analysis. Use {@link #run(ParsedSource, PrintStream)} to analyze a source file. */
     private VariableConditionAnalysis() {
     }
 
@@ -35,31 +39,44 @@ public final class VariableConditionAnalysis {
      * Analyzes a source file and prints its variables, its conditions and a test case for each
      * outcome of each condition.
      *
-     * @param lines the source lines to analyze, with comments removed
+     * @param source the source to analyze
      * @param out where to print the report
      */
-    public static void run(List<String> lines, PrintStream out) {
+    static void run(ParsedSource source, PrintStream out) {
         VariableConditionAnalysis analysis = new VariableConditionAnalysis();
-        analysis.collect(lines);
+        analysis.collect(source);
         analysis.printResults(out);
     }
 
     /**
-     * Collects the declared variables from every line, and the conditions with the paths that
-     * lead to them.
+     * Collects the declared variables and the conditions, with the paths that lead to them.
      *
-     * @param lines the source lines to scan
+     * @param source the source to scan
      */
-    private void collect(List<String> lines) {
-        for (String line : lines) {
-            if (SyntaxIdentifier.isFor(line)) {
-                parseForInitializer(line);
-            } else if (!SyntaxIdentifier.isIf(line) && !SyntaxIdentifier.isElse(line)
-                    && !SyntaxIdentifier.isWhile(line) && SyntaxIdentifier.isIntDeclaration(line)) {
-                parseDeclaration(line, false);
+    private void collect(ParsedSource source) {
+        collectDeclarations(source.statements());
+        conditions = ConditionPaths.find(source);
+    }
+
+    /**
+     * Adds the variables declared in a list of statements and in the blocks inside them, in line
+     * order: those in {@code int} declarations and in {@code for} loop initializers.
+     *
+     * @param statements the statements to scan
+     */
+    private void collectDeclarations(List<Statement> statements) {
+        for (Statement statement : statements) {
+            if (statement instanceof Simple simple && SyntaxIdentifier.isIntDeclaration(simple.line().text())) {
+                parseDeclaration(simple.line().text(), false);
+            } else if (statement instanceof Loop loop) {
+                if (SyntaxIdentifier.isFor(loop.header().text())) {
+                    parseForInitializer(loop.header().text());
+                }
+                collectDeclarations(loop.body().statements());
+            } else if (statement instanceof IfChain chain) {
+                chain.branches().forEach(branch -> collectDeclarations(branch.body().statements()));
             }
         }
-        conditions = ConditionPaths.find(lines);
     }
 
     // ***************************************************************************

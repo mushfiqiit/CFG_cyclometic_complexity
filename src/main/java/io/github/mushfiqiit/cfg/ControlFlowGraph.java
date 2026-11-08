@@ -34,7 +34,7 @@ public final class ControlFlowGraph {
      * @param lines the source lines; each line's index is its node number
      */
     ControlFlowGraph(Node root, List<String> lines) {
-        this.lines = lines;
+        this.lines = List.copyOf(lines);
         this.successors = collectSuccessors(root, lines.size());
         this.levels = measureLevels(root.getNumber());
 

@@ -17,7 +17,7 @@ class ComplexityAnalysisTest {
         List<String> events = new ArrayList<>();
         List<String> lines = program("sample.c");
 
-        String output = print(out -> ComplexityAnalysis.run(lines, out, graph -> {
+        String output = print(out -> ComplexityAnalysis.run(ParsedSource.of(lines), out, graph -> {
             out.flush();
             events.add("shown " + graph.countNodes() + " nodes");
         }));
