@@ -3,6 +3,7 @@ package io.github.mushfiqiit.cfg;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /** A comparison found in an {@code if}, {@code else if} or {@code while} statement. */
 public class Condition {
@@ -123,6 +124,26 @@ public class Condition {
      */
     public String getComparisonSign() {
         return comparisonSign;
+    }
+
+    /**
+     * Turns this condition into a comparison that can be evaluated. A single operand {@code a} is
+     * read as {@code a != 0}, and {@code !a} as {@code a == 0}.
+     *
+     * @return the comparison, or an empty value if the condition is too complex, such as
+     *         {@code (a + b) > 3} or {@code a > b && b > 0}
+     */
+    Optional<Comparison> toComparison() {
+        if (operands.size() == 1 && comparisonSign == null) {
+            return Comparison.of(operands.get(0), "!=", "0");
+        }
+        if (operands.size() == 1 && comparisonSign.equals("!")) {
+            return Comparison.of(operands.get(0), "==", "0");
+        }
+        if (operands.size() == 2 && comparisonSign != null) {
+            return Comparison.of(operands.get(0), comparisonSign, operands.get(1));
+        }
+        return Optional.empty();
     }
 
     /**
