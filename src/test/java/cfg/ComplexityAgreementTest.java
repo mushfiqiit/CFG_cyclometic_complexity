@@ -15,25 +15,19 @@ import org.junit.jupiter.api.Test;
 class ComplexityAgreementTest {
 
     private static final int PROGRAMS = 500;
-    private static final int MAX_LINES = GraphData.MAX_NODES - 2;
 
     @Test
     void graphAndDecisionPointsGiveTheSameComplexity() {
         Random random = new Random(20261107);
-        int checked = 0;
-        while (checked < PROGRAMS) {
+        for (int checked = 0; checked < PROGRAMS; checked++) {
             List<String> lines = new ArrayList<>(List.of("#include<stdio.h>", "", "int main(void) {"));
             addStatements(lines, random, 1);
             lines.add("}");
-            if (lines.size() > MAX_LINES) {
-                continue;
-            }
             ControlFlowGraph graph = TestSupport.build(lines);
             int fromGraph = graph.countEdges() - graph.countNodes() + 2;
             int fromDecisions = ComplexityCalculator.countDecisions(lines).complexity();
 
             assertEquals(fromDecisions, fromGraph, () -> "complexities differ for:\n" + String.join("\n", lines));
-            checked++;
         }
     }
 

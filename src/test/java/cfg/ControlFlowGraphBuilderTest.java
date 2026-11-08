@@ -171,13 +171,18 @@ class ControlFlowGraphBuilderTest {
     }
 
     @Test
-    void programLongerThanTheNodeLimitThrows() {
+    void longProgramsAreSupported() {
         List<String> lines = new ArrayList<>(List.of("\tint main(){"));
-        for (int i = 0; i < GraphData.MAX_NODES; i++) {
-            lines.add("    a=" + i + ";");
+        for (int i = 0; i < 500; i++) {
+            lines.add("    if(a>" + i + "){");
+            lines.add("        a=" + i + ";");
+            lines.add("    }");
         }
         lines.add("}");
 
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> build(lines));
+        ControlFlowGraph graph = build(lines);
+
+        assertEquals(lines.size(), graph.countNodes());
+        assertEquals(501, graph.countEdges() - graph.countNodes() + 2);
     }
 }

@@ -76,8 +76,8 @@ public class GraphViewer extends Application {
     }
 
     /**
-     * Adds a node for each node the root can reach. Each level is drawn as a row, and nodes on the
-     * same level are placed left to right in order of node number. Each node is labelled with its
+     * Adds a node for each line in the graph. Each level is drawn as a row, and nodes on the same
+     * level are placed left to right in order of node number. Each node is labelled with its
      * 1-based line number, and double-clicking it shows its source line.
      *
      * @param root the group that holds the scene's contents
@@ -86,16 +86,11 @@ public class GraphViewer extends Application {
      */
     private Map<Integer, GraphicNode> addNodes(Group root, ControlFlowGraph graph) {
         Map<Integer, GraphicNode> nodes = new HashMap<>();
-        int[] levels = graph.computeLevels();
-        int[] nodesPerLevel = new int[GraphData.MAX_NODES];
+        Map<Integer, Integer> nodesPerLevel = new HashMap<>();
 
-        for (int number = 0; number < graph.getLineCount(); number++) {
-            int level = levels[number];
-            if (level >= GraphData.UNREACHABLE_LEVEL) {
-                continue;
-            }
-
-            int column = nodesPerLevel[level]++;
+        for (int number : graph.reachableNodes()) {
+            int level = graph.levelOf(number).orElseThrow();
+            int column = nodesPerLevel.merge(level, 1, Integer::sum) - 1;
             GraphicNode node = GraphicNode.of(COLUMN_SPACING * (column + 1), level * ROW_SPACING,
                     number + 1, graph.getStatement(number).strip());
             nodes.put(number, node);
@@ -112,12 +107,10 @@ public class GraphViewer extends Application {
      * @param nodes the nodes to connect, keyed by node number
      */
     private void addEdges(Group root, ControlFlowGraph graph, Map<Integer, GraphicNode> nodes) {
-        for (int from = 0; from < graph.getLineCount(); from++) {
-            for (int to = 0; to < graph.getLineCount(); to++) {
-                if (graph.hasEdge(from, to)) {
-                    Edge edge = Edge.of(nodes.get(from), nodes.get(to));
-                    root.getChildren().add(0, edge); // Index 0 keeps edges behind the nodes.
-                }
+        for (int from : graph.reachableNodes()) {
+            for (int to : graph.successorsOf(from)) {
+                Edge edge = Edge.of(nodes.get(from), nodes.get(to));
+                root.getChildren().add(0, edge); // Index 0 keeps edges behind the nodes.
             }
         }
     }

@@ -16,9 +16,6 @@ public final class ComplexityAnalysis {
      * Runs the analysis on a source file, then opens the graph window and blocks until it is
      * closed.
      *
-     * <p>Files longer than {@link GraphData#MAX_NODES} lines make this method throw a runtime
-     * exception.
-     *
      * @param lines the source lines to analyze
      */
     public static void run(List<String> lines) {

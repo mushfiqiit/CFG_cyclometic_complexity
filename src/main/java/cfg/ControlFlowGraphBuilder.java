@@ -81,8 +81,6 @@ public final class ControlFlowGraphBuilder {
      *
      * @return the control flow graph
      * @throws IllegalStateException if called more than once
-     * @throws ArrayIndexOutOfBoundsException if a reachable node's number is
-     *         {@link GraphData#MAX_NODES} or more
      */
     public ControlFlowGraph build() {
         if (built) {

@@ -1,8 +1,7 @@
 package cfg;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 /**
  * Prints a {@link ControlFlowGraph} and its complexity to standard output. Lines are shown with
@@ -41,7 +40,7 @@ final class GraphPrinter {
      * @param graph the graph to print
      */
     static void printGraph(ControlFlowGraph graph) {
-        List<Integer> nodes = reachableNodes(graph);
+        List<Integer> nodes = graph.reachableNodes();
         printSuccessorTable(graph, nodes);
         printAdjacencyMatrix(graph, nodes);
     }
@@ -129,23 +128,6 @@ final class GraphPrinter {
     // ***************************************************************************
 
     /**
-     * Lists the nodes the root can reach, in order of node number.
-     *
-     * @param graph the graph to inspect
-     * @return the reachable node numbers
-     */
-    private static List<Integer> reachableNodes(ControlFlowGraph graph) {
-        int[] levels = graph.computeLevels();
-        List<Integer> nodes = new ArrayList<>();
-        for (int node = 0; node < graph.getLineCount(); node++) {
-            if (levels[node] < GraphData.UNREACHABLE_LEVEL) {
-                nodes.add(node);
-            }
-        }
-        return nodes;
-    }
-
-    /**
      * Lists the line numbers that can run right after a node.
      *
      * @param graph the graph to inspect
@@ -153,13 +135,9 @@ final class GraphPrinter {
      * @return the line numbers separated by commas, or {@code (end)} if there are none
      */
     private static String successors(ControlFlowGraph graph, int node) {
-        StringJoiner next = new StringJoiner(", ");
-        for (int to = 0; to < graph.getLineCount(); to++) {
-            if (graph.hasEdge(node, to)) {
-                next.add(String.valueOf(lineNumber(to)));
-            }
-        }
-        return next.length() == 0 ? "(end)" : next.toString();
+        List<Integer> next = graph.successorsOf(node);
+        return next.isEmpty() ? "(end)"
+                : next.stream().map(to -> String.valueOf(lineNumber(to))).collect(Collectors.joining(", "));
     }
 
     /**
