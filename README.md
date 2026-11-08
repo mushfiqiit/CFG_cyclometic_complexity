@@ -63,7 +63,33 @@ Cyclomatic complexity
   Decision points: 1 if, 2 else ifs, 1 loop
 ```
 
-The program expects one statement per line, with each block opened at the end of its `if`, `else`, `for` or `while` line and closed by a `}` on its own line. Blank lines are fine.
+### Supported layout
+
+The program analyzes one function per file, written with one statement per line:
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int a = 1;              // comments are ignored
+    if (a > 0) {            // { ends each if, else if, else, for and while line
+        a--;
+    }                       // each } is on a line of its own
+    else {
+        a++;
+    }
+    return 0;
+}
+```
+
+Blank lines, comments, `#` lines before the function and initializers such as `int v[2] = {1, 2};` are fine. Before showing the menu, the program checks the file and refuses to analyze anything it would misread, such as `} else {` on one line, an `if` without braces, a `{` on its own line, `switch` or `do` blocks, or more than one function. Each problem is listed with its line number:
+
+```
+Error: oneline.c cannot be analyzed, because it uses a layout this program does not support:
+  line 2: put each } on a line of its own, and start the next block on a new line, as in:  }  then  else {
+```
+
+The menu accepts only `1` or `2` and asks again after any other answer. The program exits with status 0 on success, 1 if the file cannot be read or analyzed or no analysis is chosen, and 2 if the command-line arguments are invalid.
 
 Run `./gradlew run --args="--help"` to see the usage message.
 

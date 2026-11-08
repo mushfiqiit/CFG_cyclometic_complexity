@@ -8,7 +8,8 @@ import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks the two complexity calculations against each other on many generated programs. For a
+ * Checks the two complexity calculations against each other on many generated programs, and that
+ * the format checker accepts every one of them. For a
  * well-structured function, the graph gives E - N + 2 and the decision points give D + 1, and the
  * two must be equal; a difference means the graph has a missing or extra edge.
  */
@@ -23,6 +24,8 @@ class ComplexityAgreementTest {
             List<String> lines = new ArrayList<>(List.of("#include<stdio.h>", "", "int main(void) {"));
             addStatements(lines, random, 1);
             lines.add("}");
+            assertEquals(List.of(), SourceFormatChecker.check(CommentStripper.strip(lines)),
+                    () -> "a supported program was rejected:\n" + String.join("\n", lines));
             ControlFlowGraph graph = TestSupport.build(lines);
             int fromGraph = graph.countEdges() - graph.countNodes() + 2;
             int fromDecisions = ComplexityCalculator.countDecisions(lines).complexity();
@@ -41,7 +44,8 @@ class ComplexityAgreementTest {
         for (int i = 0; i < count; i++) {
             int kind = depth > 3 ? 0 : random.nextInt(10);
             if (kind < 4) {
-                lines.add(indent + List.of("a = 1;", "b++;", "printf(\"x\");", "return 0;").get(random.nextInt(4)));
+                lines.add(indent + List.of("a = 1;", "b++;", "printf(\"x\");", "return 0;", "// note",
+                        "c = 2; /* inline */", "int v[2] = {1, 2};").get(random.nextInt(7)));
             } else if (kind < 5) {
                 lines.add("");
             } else if (kind < 8) {

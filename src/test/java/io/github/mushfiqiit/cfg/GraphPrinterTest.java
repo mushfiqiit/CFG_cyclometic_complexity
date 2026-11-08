@@ -91,4 +91,27 @@ class GraphPrinterTest {
         // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
         assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
     }
+
+    @Test
+    void warnsWhenTheTwoResultsDiffer() {
+        List<String> lines = List.of(
+                "int main(void) {",
+                "    if (a) { b = 1; } else { b = 2; }",
+                "    return 0;",
+                "}");
+        ControlFlowGraph graph = build(lines);
+
+        String output = captureOutput(() ->
+                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+
+        assertTrue(output.contains("  Warning: the two results differ, so the graph may not match the code.\n"), output);
+    }
+
+    @Test
+    void doesNotWarnWhenTheResultsAgree() {
+        String output = captureOutput(() ->
+                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
+
+        assertTrue(!output.contains("Warning"));
+    }
 }

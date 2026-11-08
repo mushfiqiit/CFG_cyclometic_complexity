@@ -88,6 +88,32 @@ final class TestSupport {
         return buffer.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
+    /** What a run of the program printed and the exit status it returned. */
+    record ProgramRun(int status, String output, String errors) {
+    }
+
+    /**
+     * Runs {@link Main#run(String[])} with the given standard input and captures its output, its
+     * errors and its exit status. Line endings are normalized to {@code \\n}.
+     *
+     * @param input the text to provide as standard input
+     * @param args the command-line arguments
+     * @return what the run printed and returned
+     */
+    static ProgramRun runProgram(String input, String... args) {
+        PrintStream originalErr = System.err;
+        ByteArrayOutputStream errors = new ByteArrayOutputStream();
+        int[] status = new int[1];
+        String output;
+        try (PrintStream capture = new PrintStream(errors, true, StandardCharsets.UTF_8)) {
+            System.setErr(capture);
+            output = captureOutput(input, () -> status[0] = Main.run(args));
+        } finally {
+            System.setErr(originalErr);
+        }
+        return new ProgramRun(status[0], output, errors.toString(StandardCharsets.UTF_8).replace("\r\n", "\n"));
+    }
+
     /**
      * Lists a graph's edges as {@code "from->to"} using 1-based line numbers, such as
      * {@code "2->3"}.

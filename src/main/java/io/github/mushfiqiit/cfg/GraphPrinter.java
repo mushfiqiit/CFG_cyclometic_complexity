@@ -102,7 +102,8 @@ final class GraphPrinter {
 
     /**
      * Prints the cyclomatic complexity worked out both ways: from the graph as edges - nodes + 2,
-     * and from the decision points as decisions + 1. For well-structured code the two agree.
+     * and from the decision points as decisions + 1. For well-structured code the two agree; if
+     * they do not, a warning is printed, because the graph cannot be trusted.
      *
      * @param graph the graph to measure
      * @param decisions the decision points counted in the source
@@ -121,6 +122,11 @@ final class GraphPrinter {
                 ConsoleText.count(decisions.ifs(), "if", "ifs"),
                 ConsoleText.count(decisions.elseIfs(), "else if", "else ifs"),
                 ConsoleText.count(decisions.loops(), "loop", "loops")));
+        if (fromGraph != decisions.complexity()) {
+            System.out.println();
+            System.out.println("  Warning: the two results differ, so the graph may not match the code.");
+            System.out.println("  Check that the file uses the supported layout described in the README.");
+        }
     }
 
     // ***************************************************************************
