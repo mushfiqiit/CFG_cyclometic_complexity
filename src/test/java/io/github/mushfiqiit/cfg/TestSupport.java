@@ -3,7 +3,6 @@ package io.github.mushfiqiit.cfg;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
@@ -14,8 +13,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 
-/** Shared helpers for the tests: loading test programs, capturing output and describing graphs. */
+/** Shared helpers for the tests: loading test programs, capturing printed text and describing graphs. */
 final class TestSupport {
 
     /** Prevents instantiation; this class only has static methods. */
@@ -55,63 +55,62 @@ final class TestSupport {
     }
 
     /**
-     * Runs code and returns everything it printed to standard output, with line endings
-     * normalized to {@code \n} so tests pass on every OS.
+     * Runs code that prints to a stream and returns what it printed, with line endings normalized
+     * to {@code \\n} so tests pass on every OS.
      *
-     * @param code the code to run
-     * @return the captured output
+     * @param code the code to run, given the stream to print to
+     * @return the printed text
      */
-    static String captureOutput(Runnable code) {
-        return captureOutput("", code);
+    static String print(Consumer<PrintStream> code) {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (PrintStream out = new PrintStream(buffer, true, StandardCharsets.UTF_8)) {
+            code.accept(out);
+        }
+        return normalized(buffer);
     }
 
     /**
-     * Runs code with the given text as standard input and returns everything it printed to
-     * standard output, with line endings normalized to {@code \n}.
+     * Returns the text written to a buffer, with line endings normalized to {@code \\n}.
      *
-     * @param input the text to provide as standard input
-     * @param code the code to run
-     * @return the captured output
+     * @param buffer the buffer to read
+     * @return the text
      */
-    static String captureOutput(String input, Runnable code) {
-        PrintStream originalOut = System.out;
-        InputStream originalIn = System.in;
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (PrintStream capture = new PrintStream(buffer, true, StandardCharsets.UTF_8)) {
-            System.setOut(capture);
-            System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
-            code.run();
-        } finally {
-            System.setOut(originalOut);
-            System.setIn(originalIn);
-        }
+    private static String normalized(ByteArrayOutputStream buffer) {
         return buffer.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
-    /** What a run of the program printed and the exit status it returned. */
-    record ProgramRun(int status, String output, String errors) {
+    /** What a run of the program printed and the exit status it returned and the exit status it returned. */
+    /**
+     * What a run of the program printed, the exit status it returned, and the graph it would have
+     * shown in a window.
+     *
+     * @param status the exit status
+     * @param output what was printed to the output stream
+     * @param errors what was printed to the error stream
+     * @param shownGraph the graph handed to the display, or null if none was
+     */
+    record ProgramRun(int status, String output, String errors, ControlFlowGraph shownGraph) {
     }
 
     /**
-     * Runs {@link Main#run(String[])} with the given standard input and captures its output, its
-     * errors and its exit status. Line endings are normalized to {@code \\n}.
+     * Runs {@link Main#run} with the given input, capturing its output and errors and recording
+     * the graph instead of opening a window. Line endings are normalized to {@code \\n}.
      *
-     * @param input the text to provide as standard input
+     * @param input the text to provide as input
      * @param args the command-line arguments
-     * @return what the run printed and returned
+     * @return what the run printed, returned and showed
      */
     static ProgramRun runProgram(String input, String... args) {
-        PrintStream originalErr = System.err;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
         ByteArrayOutputStream errors = new ByteArrayOutputStream();
-        int[] status = new int[1];
-        String output;
-        try (PrintStream capture = new PrintStream(errors, true, StandardCharsets.UTF_8)) {
-            System.setErr(capture);
-            output = captureOutput(input, () -> status[0] = Main.run(args));
-        } finally {
-            System.setErr(originalErr);
+        ControlFlowGraph[] shown = new ControlFlowGraph[1];
+        int status;
+        try (PrintStream out = new PrintStream(output, true, StandardCharsets.UTF_8);
+                PrintStream err = new PrintStream(errors, true, StandardCharsets.UTF_8)) {
+            status = Main.run(args, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), out, err,
+                    graph -> shown[0] = graph);
         }
-        return new ProgramRun(status[0], output, errors.toString(StandardCharsets.UTF_8).replace("\r\n", "\n"));
+        return new ProgramRun(status, normalized(output), normalized(errors), shown[0]);
     }
 
     /**

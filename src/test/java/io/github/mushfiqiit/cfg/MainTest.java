@@ -4,6 +4,7 @@ import static io.github.mushfiqiit.cfg.TestSupport.programPath;
 import static io.github.mushfiqiit.cfg.TestSupport.runProgram;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.mushfiqiit.cfg.TestSupport.ProgramRun;
@@ -135,6 +136,32 @@ class MainTest {
                 "==============")), run.output());
         assertTrue(run.output().contains("  4    11  a>c        >         a, c\n"));
         assertEquals("", run.errors());
+    }
+
+    @Test
+    void optionOnePrintsTheReportAndThenShowsTheGraph() {
+        ProgramRun run = runProgram("1\n", programPath("sample.c").toString());
+
+        assertEquals(Main.EXIT_SUCCESS, run.status());
+        assertTrue(run.output().contains("Cyclomatic Complexity\n=====================\nEntry point: line 2: int main(){\n"));
+        assertTrue(run.output().contains("M = E - N + 2 = 19 - 16 + 2 = 5"));
+        assertTrue(run.output().endsWith("Opening the graph window. Close it to exit.\n"));
+        assertEquals(16, run.shownGraph().countNodes());
+        assertEquals("", run.errors());
+    }
+
+    @Test
+    void optionTwoShowsNoGraph() {
+        assertNull(runProgram("2\n", programPath("sample.c").toString()).shownGraph());
+    }
+
+    @Test
+    void errorsGoToTheErrorStreamOnly() {
+        ProgramRun run = runProgram("", folder.resolve("nope.c").toString());
+
+        assertFalse(run.output().contains("Error"));
+        assertTrue(run.errors().startsWith("Error: cannot open source file: "));
+        assertNull(run.shownGraph());
     }
 
     @Test

@@ -1,7 +1,7 @@
 package io.github.mushfiqiit.cfg;
 
 import static io.github.mushfiqiit.cfg.TestSupport.build;
-import static io.github.mushfiqiit.cfg.TestSupport.captureOutput;
+import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static io.github.mushfiqiit.cfg.TestSupport.program;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,15 +23,15 @@ class GraphPrinterTest {
 
     @Test
     void entryPointShowsTheOneBasedLineAndStatement() {
-        String output = captureOutput(() ->
-                GraphPrinter.printEntryPoint(ControlFlowGraphBuilder.from(sample).root()));
+        String output = print(out ->
+                new GraphPrinter(out).printEntryPoint(ControlFlowGraphBuilder.from(sample).root()));
 
         assertEquals("Entry point: line 2: int main(){\n", output);
     }
 
     @Test
     void successorTableListsEachReachableLineWithItsNextLines() {
-        String output = captureOutput(() -> GraphPrinter.printGraph(graph));
+        String output = print(out -> new GraphPrinter(out).printGraph(graph));
         String table = output.substring(output.indexOf("  Line  Statement"), output.indexOf("\n\nAdjacency matrix"));
 
         assertEquals(String.join("\n",
@@ -57,7 +57,7 @@ class GraphPrinterTest {
 
     @Test
     void adjacencyMatrixHasLineNumberHeadersAndMarksEdgesWithOne() {
-        List<String> lines = collapsedLines(captureOutput(() -> GraphPrinter.printGraph(graph)));
+        List<String> lines = collapsedLines(print(out -> new GraphPrinter(out).printGraph(graph)));
 
         assertTrue(lines.contains("Line 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"));
         assertTrue(lines.contains("4 . . . 1 . . . . . . . . . . 1 ."));
@@ -67,8 +67,8 @@ class GraphPrinterTest {
 
     @Test
     void complexityShowsBothFormulasAndTheDecisionPoints() {
-        String output = captureOutput(() ->
-                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
+        String output = print(out ->
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
 
         assertEquals(String.join("\n",
                 "",
@@ -85,8 +85,8 @@ class GraphPrinterTest {
         List<String> lines = program("two-preamble-lines.c");
         ControlFlowGraph graph = build(lines);
 
-        String output = captureOutput(() ->
-                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+        String output = print(out ->
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
 
         // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
         assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
@@ -101,16 +101,16 @@ class GraphPrinterTest {
                 "}");
         ControlFlowGraph graph = build(lines);
 
-        String output = captureOutput(() ->
-                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
+        String output = print(out ->
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(lines)));
 
         assertTrue(output.contains("  Warning: the two results differ, so the graph may not match the code.\n"), output);
     }
 
     @Test
     void doesNotWarnWhenTheResultsAgree() {
-        String output = captureOutput(() ->
-                GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
+        String output = print(out ->
+                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(sample)));
 
         assertTrue(!output.contains("Warning"));
     }

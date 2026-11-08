@@ -1,10 +1,12 @@
 package io.github.mushfiqiit.cfg;
 
+import java.io.PrintStream;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Runs the cyclomatic complexity option: builds the control flow graph, prints it and both
- * complexity results, then shows the graph in a window.
+ * complexity results, then shows the graph.
  */
 public final class ComplexityAnalysis {
 
@@ -13,22 +15,26 @@ public final class ComplexityAnalysis {
     }
 
     /**
-     * Runs the analysis on a source file, then opens the graph window and blocks until it is
-     * closed.
+     * Runs the analysis on a source file, prints the report, then hands the graph to
+     * {@code showGraph}. The program passes {@link GraphViewer#show(ControlFlowGraph)}, which
+     * opens a window and blocks until it is closed.
      *
-     * @param lines the source lines to analyze
+     * @param lines the source lines to analyze, with comments removed
+     * @param out where to print the report
+     * @param showGraph what to do with the finished graph
      */
-    public static void run(List<String> lines) {
-        ConsoleText.printTitle("Cyclomatic Complexity");
+    public static void run(List<String> lines, PrintStream out, Consumer<ControlFlowGraph> showGraph) {
+        GraphPrinter printer = new GraphPrinter(out);
+        ConsoleText.printTitle(out, "Cyclomatic Complexity");
         ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(lines);
-        GraphPrinter.printEntryPoint(builder.root());
+        printer.printEntryPoint(builder.root());
 
         ControlFlowGraph graph = builder.build();
-        GraphPrinter.printGraph(graph);
-        GraphPrinter.printComplexity(graph, ComplexityCalculator.countDecisions(lines));
+        printer.printGraph(graph);
+        printer.printComplexity(graph, ComplexityCalculator.countDecisions(lines));
 
-        System.out.println();
-        System.out.println("Opening the graph window. Close it to exit.");
-        GraphViewer.show(graph);
+        out.println();
+        out.println("Opening the graph window. Close it to exit.");
+        showGraph.accept(graph);
     }
 }

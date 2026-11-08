@@ -1,6 +1,8 @@
 package io.github.mushfiqiit.cfg;
 
-/** Prints titles and section headings, so every report has the same layout. */
+import java.io.PrintStream;
+
+/** Formats titles, section headings and counted words, so every report has the same layout. */
 final class ConsoleText {
 
     /** Prevents instantiation; this class only has static methods. */
@@ -8,25 +10,27 @@ final class ConsoleText {
     }
 
     /**
-     * Prints a report title underlined with {@code =}.
+     * Prints a report title underlined with {@code =}, after a blank line.
      *
+     * @param out where to print
      * @param title the title to print
      */
-    static void printTitle(String title) {
-        System.out.println();
-        System.out.println(title);
-        System.out.println("=".repeat(title.length()));
+    static void printTitle(PrintStream out, String title) {
+        out.println();
+        out.println(title);
+        out.println("=".repeat(title.length()));
     }
 
     /**
      * Prints a section heading underlined with {@code -}, after a blank line.
      *
+     * @param out where to print
      * @param heading the heading to print
      */
-    static void printSection(String heading) {
-        System.out.println();
-        System.out.println(heading);
-        System.out.println("-".repeat(heading.length()));
+    static void printSection(PrintStream out, String heading) {
+        out.println();
+        out.println(heading);
+        out.println("-".repeat(heading.length()));
     }
 
     /**

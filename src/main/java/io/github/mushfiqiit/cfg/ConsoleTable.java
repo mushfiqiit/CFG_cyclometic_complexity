@@ -1,5 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -8,7 +9,7 @@ import java.util.Set;
 
 /**
  * A text table with a header row, a dashed separator and columns padded to line up. Add rows with
- * {@link #addRow(Object...)}, then call {@link #print()}.
+ * {@link #addRow(Object...)}, then call {@link #print(PrintStream)}.
  */
 final class ConsoleTable {
 
@@ -66,17 +67,21 @@ final class ConsoleTable {
     // Printing the table
     // ***************************************************************************
 
-    /** Prints the header, a dashed separator and every row, indented by two spaces. */
-    void print() {
+    /**
+     * Prints the header, a dashed separator and every row, indented by two spaces.
+     *
+     * @param out where to print
+     */
+    void print(PrintStream out) {
         int[] widths = columnWidths();
-        printRow(headers, widths);
+        printRow(out, headers, widths);
         List<String> separator = new ArrayList<>();
         for (int width : widths) {
             separator.add("-".repeat(width));
         }
-        printRow(separator, widths);
+        printRow(out, separator, widths);
         for (List<String> row : rows) {
-            printRow(row, widths);
+            printRow(out, row, widths);
         }
     }
 
@@ -99,10 +104,11 @@ final class ConsoleTable {
     /**
      * Prints one row with each cell padded to its column's width, without trailing spaces.
      *
+     * @param out where to print
      * @param cells the cells to print
      * @param widths the width of each column
      */
-    private void printRow(List<String> cells, int[] widths) {
+    private void printRow(PrintStream out, List<String> cells, int[] widths) {
         StringBuilder line = new StringBuilder(INDENT);
         for (int column = 0; column < cells.size(); column++) {
             if (column > 0) {
@@ -111,6 +117,6 @@ final class ConsoleTable {
             String format = "%" + (rightAligned.contains(column) ? "" : "-") + widths[column] + "s";
             line.append(String.format(format, cells.get(column)));
         }
-        System.out.println(line.toString().stripTrailing());
+        out.println(line.toString().stripTrailing());
     }
 }

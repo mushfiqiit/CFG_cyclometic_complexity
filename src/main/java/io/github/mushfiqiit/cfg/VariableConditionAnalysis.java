@@ -1,5 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -22,7 +23,7 @@ public final class VariableConditionAnalysis {
     private final List<FoundCondition> conditions = new ArrayList<>();
     private final List<Variable> variables = new ArrayList<>();
 
-    /** Creates an empty analysis. Use {@link #run(List)} to analyze a source file. */
+    /** Creates an empty analysis. Use {@link #run(List, PrintStream)} to analyze a source file. */
     private VariableConditionAnalysis() {
     }
 
@@ -33,12 +34,13 @@ public final class VariableConditionAnalysis {
     /**
      * Analyzes a source file and prints the test input values and the conditions to cover.
      *
-     * @param lines the source lines to analyze
+     * @param lines the source lines to analyze, with comments removed
+     * @param out where to print the report
      */
-    public static void run(List<String> lines) {
+    public static void run(List<String> lines, PrintStream out) {
         VariableConditionAnalysis analysis = new VariableConditionAnalysis();
         analysis.collect(lines);
-        analysis.printResults();
+        analysis.printResults(out);
     }
 
     /**
@@ -158,22 +160,26 @@ public final class VariableConditionAnalysis {
     // Printing results
     // ***************************************************************************
 
-    /** Prints the test input values, then the conditions to cover. */
-    private void printResults() {
-        ConsoleText.printTitle("Test Case Data");
+    /**
+     * Prints the test input values, then the conditions to cover.
+     *
+     * @param out where to print
+     */
+    private void printResults(PrintStream out) {
+        ConsoleText.printTitle(out, "Test Case Data");
 
-        ConsoleText.printSection("Test input values");
+        ConsoleText.printSection(out, "Test input values");
         if (variables.isEmpty()) {
-            System.out.println("  No int variables were declared.");
+            out.println("  No int variables were declared.");
         } else {
             ConsoleTable table = new ConsoleTable("Variable", "Value").alignRight(1);
             variables.forEach(variable -> table.addRow(variable.name(), variable.value()));
-            table.print();
+            table.print(out);
         }
 
-        ConsoleText.printSection("Conditions to cover");
+        ConsoleText.printSection(out, "Conditions to cover");
         if (conditions.isEmpty()) {
-            System.out.println("  No if, else if or while conditions were found.");
+            out.println("  No if, else if or while conditions were found.");
         } else {
             ConsoleTable table = new ConsoleTable("#", "Line", "Condition", "Operator", "Operands")
                     .alignRight(0, 1);
@@ -183,7 +189,7 @@ public final class VariableConditionAnalysis {
                 table.addRow(i + 1, found.lineNumber(), orDash(condition.getText()),
                         orDash(condition.getComparisonSign()), operandNames(condition));
             }
-            table.print();
+            table.print(out);
         }
     }
 

@@ -1,6 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
-import static io.github.mushfiqiit.cfg.TestSupport.captureOutput;
+import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -11,10 +11,10 @@ class ConsoleTableTest {
 
     @Test
     void padsColumnsToTheirWidestCellAndRightAlignsChosenColumns() {
-        String output = captureOutput(() -> new ConsoleTable("Name", "N").alignRight(1)
+        String output = print(out -> new ConsoleTable("Name", "N").alignRight(1)
                 .addRow("a", 1)
                 .addRow("long", 100)
-                .print());
+                .print(out));
 
         assertEquals(String.join("\n",
                 "  Name    N",
@@ -26,10 +26,10 @@ class ConsoleTableTest {
 
     @Test
     void doesNotLeaveTrailingSpaces() {
-        String output = captureOutput(() -> new ConsoleTable("A", "B")
+        String output = print(out -> new ConsoleTable("A", "B")
                 .addRow("x", "longer")
                 .addRow("y", "s")
-                .print());
+                .print(out));
 
         assertEquals("  y  s", output.split("\n")[3]);
     }

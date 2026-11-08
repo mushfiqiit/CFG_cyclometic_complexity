@@ -1,18 +1,26 @@
 package io.github.mushfiqiit.cfg;
 
+import java.io.PrintStream;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Prints a {@link ControlFlowGraph} and its complexity to standard output. Lines are shown with
+ * Prints a {@link ControlFlowGraph} and its complexity to a stream. Lines are shown with
  * the 1-based numbers an editor uses, so node {@code n} is printed as line {@code n + 1}.
  */
 final class GraphPrinter {
 
     private static final int MAX_STATEMENT_LENGTH = 40;
 
-    /** Prevents instantiation; this class only has static methods. */
-    private GraphPrinter() {
+    private final PrintStream out;
+
+    /**
+     * Creates a printer that writes to the given stream.
+     *
+     * @param out where to print
+     */
+    GraphPrinter(PrintStream out) {
+        this.out = out;
     }
 
     // ***************************************************************************
@@ -24,8 +32,8 @@ final class GraphPrinter {
      *
      * @param root the graph's root node
      */
-    static void printEntryPoint(Node root) {
-        System.out.println("Entry point: line " + lineNumber(root.getNumber()) + ": "
+    void printEntryPoint(Node root) {
+        out.println("Entry point: line " + lineNumber(root.getNumber()) + ": "
                 + root.getStatement().strip());
     }
 
@@ -39,7 +47,7 @@ final class GraphPrinter {
      *
      * @param graph the graph to print
      */
-    static void printGraph(ControlFlowGraph graph) {
+    void printGraph(ControlFlowGraph graph) {
         List<Integer> nodes = graph.reachableNodes();
         printSuccessorTable(graph, nodes);
         printAdjacencyMatrix(graph, nodes);
@@ -51,17 +59,17 @@ final class GraphPrinter {
      * @param graph the graph to print
      * @param nodes the reachable node numbers, in order
      */
-    private static void printSuccessorTable(ControlFlowGraph graph, List<Integer> nodes) {
-        ConsoleText.printSection("Control flow graph");
-        System.out.println("  Each row is a source line, followed by the lines that can run right after it.");
-        System.out.println();
+    private void printSuccessorTable(ControlFlowGraph graph, List<Integer> nodes) {
+        ConsoleText.printSection(out, "Control flow graph");
+        out.println("  Each row is a source line, followed by the lines that can run right after it.");
+        out.println();
 
         ConsoleTable table = new ConsoleTable("Line", "Statement", "Next lines").alignRight(0);
         for (int node : nodes) {
             String statement = ConsoleText.shorten(graph.getStatement(node).strip(), MAX_STATEMENT_LENGTH);
             table.addRow(lineNumber(node), statement, successors(graph, node));
         }
-        table.print();
+        table.print(out);
     }
 
     /**
@@ -71,10 +79,10 @@ final class GraphPrinter {
      * @param graph the graph to print
      * @param nodes the reachable node numbers, in order
      */
-    private static void printAdjacencyMatrix(ControlFlowGraph graph, List<Integer> nodes) {
-        ConsoleText.printSection("Adjacency matrix");
-        System.out.println("  1 means the row's line can run right before the column's line.");
-        System.out.println();
+    private void printAdjacencyMatrix(ControlFlowGraph graph, List<Integer> nodes) {
+        ConsoleText.printSection(out, "Adjacency matrix");
+        out.println("  1 means the row's line can run right before the column's line.");
+        out.println();
 
         String[] headers = new String[nodes.size() + 1];
         headers[0] = "Line";
@@ -93,7 +101,7 @@ final class GraphPrinter {
             }
             table.addRow(cells);
         }
-        table.print();
+        table.print(out);
     }
 
     // ***************************************************************************
@@ -108,24 +116,24 @@ final class GraphPrinter {
      * @param graph the graph to measure
      * @param decisions the decision points counted in the source
      */
-    static void printComplexity(ControlFlowGraph graph, DecisionCounts decisions) {
+    void printComplexity(ControlFlowGraph graph, DecisionCounts decisions) {
         int nodeCount = graph.countNodes();
         int edgeCount = graph.countEdges();
         int fromGraph = edgeCount - nodeCount + 2;
 
-        ConsoleText.printSection("Cyclomatic complexity");
-        System.out.printf("  From the graph:            M = E - N + 2 = %d - %d + 2 = %d%n",
+        ConsoleText.printSection(out, "Cyclomatic complexity");
+        out.printf("  From the graph:            M = E - N + 2 = %d - %d + 2 = %d%n",
                 edgeCount, nodeCount, fromGraph);
-        System.out.printf("  From the decision points:  M = D + 1 = %d + 1 = %d%n",
+        out.printf("  From the decision points:  M = D + 1 = %d + 1 = %d%n",
                 decisions.total(), decisions.complexity());
-        System.out.println("  Decision points: " + String.join(", ",
+        out.println("  Decision points: " + String.join(", ",
                 ConsoleText.count(decisions.ifs(), "if", "ifs"),
                 ConsoleText.count(decisions.elseIfs(), "else if", "else ifs"),
                 ConsoleText.count(decisions.loops(), "loop", "loops")));
         if (fromGraph != decisions.complexity()) {
-            System.out.println();
-            System.out.println("  Warning: the two results differ, so the graph may not match the code.");
-            System.out.println("  Check that the file uses the supported layout described in the README.");
+            out.println();
+            out.println("  Warning: the two results differ, so the graph may not match the code.");
+            out.println("  Check that the file uses the supported layout described in the README.");
         }
     }
 

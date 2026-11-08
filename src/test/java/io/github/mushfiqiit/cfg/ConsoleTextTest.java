@@ -1,6 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
-import static io.github.mushfiqiit.cfg.TestSupport.captureOutput;
+import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
@@ -10,12 +10,12 @@ class ConsoleTextTest {
 
     @Test
     void titleIsUnderlinedWithEqualsSigns() {
-        assertEquals("\nReport\n======\n", captureOutput(() -> ConsoleText.printTitle("Report")));
+        assertEquals("\nReport\n======\n", print(out -> ConsoleText.printTitle(out, "Report")));
     }
 
     @Test
     void sectionIsUnderlinedWithDashes() {
-        assertEquals("\nPart\n----\n", captureOutput(() -> ConsoleText.printSection("Part")));
+        assertEquals("\nPart\n----\n", print(out -> ConsoleText.printSection(out, "Part")));
     }
 
     @Test
