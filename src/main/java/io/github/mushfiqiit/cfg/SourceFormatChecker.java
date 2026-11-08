@@ -1,9 +1,16 @@
 package io.github.mushfiqiit.cfg;
 
-import java.util.ArrayDeque;
+import io.github.mushfiqiit.cfg.SourceTree.Block;
+import io.github.mushfiqiit.cfg.SourceTree.Branch;
+import io.github.mushfiqiit.cfg.SourceTree.Function;
+import io.github.mushfiqiit.cfg.SourceTree.IfChain;
+import io.github.mushfiqiit.cfg.SourceTree.Line;
+import io.github.mushfiqiit.cfg.SourceTree.Loop;
+import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -33,9 +40,6 @@ final class SourceFormatChecker {
 
     /** A return type, then a name followed by "(", as in "int main(" or "static char *name(". */
     private static final Pattern FUNCTION_HEADER = Pattern.compile("[A-Za-z_][\\w\\s*]*[\\s*][A-Za-z_]\\w*\\s*\\(");
-
-    /** The kinds of block a closing brace can end. */
-    private enum Block { FUNCTION, IF, ELSE_IF, ELSE, LOOP }
 
     /** Prevents instantiation; this class only has static methods. */
     private SourceFormatChecker() {
@@ -71,7 +75,7 @@ final class SourceFormatChecker {
             checkLine(code.get(index).strip(), index + 1, problems);
         }
         if (problems.isEmpty()) {
-            checkStructure(code, functionLine, problems);
+            SourceParser.parse(code).ifPresent(function -> checkStructure(code, function, problems));
         }
         return problems;
     }
@@ -151,71 +155,91 @@ final class SourceFormatChecker {
     // ***************************************************************************
 
     /**
-     * Checks that every block is closed, that each {@code else} follows the end of an {@code if}
-     * or {@code else if}, and that nothing comes after the function.
+     * Checks the function's structure: that each {@code else} follows the end of an {@code if} or
+     * {@code else if}, that nothing comes after the function, and that every block is closed.
+     * Only the first of these problems in the file is reported, because the others usually
+     * follow from it.
      *
      * @param code the source lines with comments removed
-     * @param functionLine index of the function's opening line
-     * @param problems where to add any problem found
+     * @param function the function's structure
+     * @param problems where to add the problem found, if any
      */
-    private static void checkStructure(List<String> code, int functionLine, List<Problem> problems) {
-        Deque<Block> blocks = new ArrayDeque<>();
-        Deque<Integer> openedOn = new ArrayDeque<>();
-        blocks.push(Block.FUNCTION);
-        openedOn.push(functionLine + 1);
-        Block justClosed = null;
+    private static void checkStructure(List<String> code, Function function, List<Problem> problems) {
+        List<Problem> found = new ArrayList<>();
+        findElsesWithoutIf(function.body(), found);
+        function.body().closing().flatMap(end -> firstLineAfter(code, end)).ifPresent(line -> found.add(new Problem(
+                line.number(), "only one function can be analyzed, and this line comes after the function that ends on line "
+                        + function.body().closing().get().number())));
 
-        for (int index = functionLine + 1; index < code.size(); index++) {
-            String line = code.get(index).strip();
-            int lineNumber = index + 1;
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (blocks.isEmpty()) {
-                problems.add(new Problem(lineNumber, "only one function can be analyzed, and this line comes after"
-                        + " the function that ends on line " + endOfFunction(code, index)));
-                return;
-            }
-            Block closing = null;
-            if (line.equals("}")) {
-                closing = blocks.pop();
-                openedOn.pop();
-            } else if (SyntaxIdentifier.isElse(line)) {
-                if (justClosed != Block.IF && justClosed != Block.ELSE_IF) {
-                    problems.add(new Problem(lineNumber,
-                            "this else has no matching if; it must come right after the } that closes an if or else if"));
-                    return;
-                }
-                blocks.push(SyntaxIdentifier.isElseIf(line) ? Block.ELSE_IF : Block.ELSE);
-                openedOn.push(lineNumber);
-            } else if (SyntaxIdentifier.isIf(line)) {
-                blocks.push(Block.IF);
-                openedOn.push(lineNumber);
-            } else if (SyntaxIdentifier.isLoop(line)) {
-                blocks.push(Block.LOOP);
-                openedOn.push(lineNumber);
-            }
-            justClosed = closing;
-        }
-        if (!blocks.isEmpty()) {
-            problems.add(new Problem(openedOn.peek(), "this block is never closed; add a } on its own line"));
+        Optional<Problem> first = found.stream().min(Comparator.comparingInt(Problem::lineNumber));
+        if (first.isPresent()) {
+            problems.add(first.get());
+        } else {
+            innermostUnclosed(function.header(), function.body()).ifPresent(line -> problems.add(
+                    new Problem(line.number(), "this block is never closed; add a } on its own line")));
         }
     }
 
     /**
-     * Finds the line number of the function's closing brace, which is the last non-blank line
-     * before {@code index}.
+     * Finds every {@code if} chain that starts with an {@code else}, at any depth.
+     *
+     * @param block the block to search
+     * @param found where to add a problem for each one
+     */
+    private static void findElsesWithoutIf(Block block, List<Problem> found) {
+        for (Statement statement : block.statements()) {
+            if (statement instanceof IfChain chain) {
+                Line first = chain.branches().get(0).header();
+                if (SyntaxIdentifier.isElse(first.text())) {
+                    found.add(new Problem(first.number(),
+                            "this else has no matching if; it must come right after the } that closes an if or else if"));
+                }
+                chain.branches().forEach(branch -> findElsesWithoutIf(branch.body(), found));
+            } else if (statement instanceof Loop loop) {
+                findElsesWithoutIf(loop.body(), found);
+            }
+        }
+    }
+
+    /**
+     * Finds the first non-blank line after the function.
      *
      * @param code the source lines with comments removed
-     * @param index the index of the first line after the function
-     * @return the 1-based line number of the closing brace
+     * @param end the function's closing line
+     * @return the line, or an empty value if only blank lines follow
      */
-    private static int endOfFunction(List<String> code, int index) {
-        int previous = index - 1;
-        while (previous > 0 && code.get(previous).isBlank()) {
-            previous--;
+    private static Optional<Line> firstLineAfter(List<String> code, Line end) {
+        for (int index = end.index() + 1; index < code.size(); index++) {
+            if (!code.get(index).isBlank()) {
+                return Optional.of(new Line(index, code.get(index)));
+            }
         }
-        return previous + 1;
+        return Optional.empty();
+    }
+
+    /**
+     * Finds the innermost block that the file ends inside. Such blocks are always the last
+     * statement of the block around them.
+     *
+     * @param opener the line that opens {@code block}
+     * @param block the block to search
+     * @return the opening line of the innermost unclosed block, or an empty value if
+     *         {@code block} is closed
+     */
+    private static Optional<Line> innermostUnclosed(Line opener, Block block) {
+        if (block.closing().isPresent()) {
+            return Optional.empty();
+        }
+        List<Statement> statements = block.statements();
+        Statement last = statements.isEmpty() ? null : statements.get(statements.size() - 1);
+        Optional<Line> inner = Optional.empty();
+        if (last instanceof Loop loop) {
+            inner = innermostUnclosed(loop.header(), loop.body());
+        } else if (last instanceof IfChain chain) {
+            Branch lastBranch = chain.branches().get(chain.branches().size() - 1);
+            inner = innermostUnclosed(lastBranch.header(), lastBranch.body());
+        }
+        return inner.isPresent() ? inner : Optional.of(opener);
     }
 
     // ***************************************************************************

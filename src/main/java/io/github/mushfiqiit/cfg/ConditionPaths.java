@@ -1,31 +1,21 @@
 package io.github.mushfiqiit.cfg;
 
 import io.github.mushfiqiit.cfg.ConditionSite.Requirement;
-import java.util.ArrayDeque;
+import io.github.mushfiqiit.cfg.SourceTree.Branch;
+import io.github.mushfiqiit.cfg.SourceTree.Function;
+import io.github.mushfiqiit.cfg.SourceTree.IfChain;
+import io.github.mushfiqiit.cfg.SourceTree.Line;
+import io.github.mushfiqiit.cfg.SourceTree.Loop;
+import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
 /**
  * Finds the {@code if}, {@code else if} and {@code while} conditions of a function and what must
- * hold to reach each one. {@code for} loops are assumed to run their body at least once.
+ * hold to reach each one, by walking the function's {@link SourceTree}. {@code for} loops are
+ * assumed to run their body at least once.
  */
 final class ConditionPaths {
-
-    /** The kinds of block that can enclose a condition. */
-    private enum Kind { FUNCTION, IF, ELSE_IF, ELSE, LOOP }
-
-    /**
-     * An open block.
-     *
-     * @param kind what opened the block
-     * @param inside what holds for every line inside the block
-     * @param chain for an {@code if} or {@code else if}: what holds when the chain reaches the
-     *        next {@code else}, meaning this condition and the earlier ones in the chain are false
-     */
-    private record Block(Kind kind, List<Requirement> inside, List<Requirement> chain) {
-    }
 
     /** Prevents instantiation; this class only has static methods. */
     private ConditionPaths() {
@@ -37,64 +27,98 @@ final class ConditionPaths {
 
     /**
      * Finds every {@code if}, {@code else if} and {@code while} condition in line order, with the
-     * path that leads to it.
+     * path that leads to it. If the first line of code is itself an {@code if} or a loop rather
+     * than a function header, it is treated as the first statement.
      *
-     * @param code the source lines with comments removed, in the supported layout
-     * @return the conditions with their paths
+     * @param code the source lines with comments removed
+     * @return the conditions with their paths; empty if there is no code
      */
     static List<ConditionSite> find(List<String> code) {
         List<ConditionSite> sites = new ArrayList<>();
-        Deque<Block> blocks = new ArrayDeque<>();
-        List<Requirement> closedChain = List.of();
-        boolean inFunction = false;
+        SourceParser.parse(code).ifPresent(function -> walk(statementsOf(function), List.of(), sites));
+        return sites;
+    }
 
-        for (int index = 0; index < code.size(); index++) {
-            String line = code.get(index).strip();
-            int lineNumber = index + 1;
-            if (line.isEmpty() || (!inFunction && line.startsWith("#"))) {
-                continue;
-            }
-            if (!inFunction) {
-                inFunction = true;
-                blocks.push(new Block(Kind.FUNCTION, List.of(), List.of()));
-                if (!isConditionalBlock(line)) {
-                    continue;
-                }
-            }
-            if (blocks.isEmpty()) {
-                break;
-            }
-            List<Requirement> earlier = closedChain;
-            closedChain = List.of();
-            List<Requirement> context = context(blocks);
+    /**
+     * Returns the statements to walk: the function's body, or, when the first line is a
+     * condition or loop, that line with its block as the only statement.
+     *
+     * @param function the parsed function
+     * @return the statements, in order
+     */
+    private static List<Statement> statementsOf(Function function) {
+        String header = function.header().text();
+        if (SyntaxIdentifier.isLoop(header)) {
+            return List.of(new Loop(function.header(), function.body()));
+        }
+        if (SyntaxIdentifier.isIf(header) || SyntaxIdentifier.isElse(header)) {
+            return List.of(new IfChain(List.of(new Branch(function.header(), function.body()))));
+        }
+        return function.body().statements();
+    }
 
-            if (line.equals("}")) {
-                Block closed = blocks.pop();
-                if (closed.kind() == Kind.IF || closed.kind() == Kind.ELSE_IF) {
-                    closedChain = closed.chain();
-                }
-            } else if (SyntaxIdentifier.isElseIf(line)) {
-                Condition condition = Condition.from(line);
-                sites.add(new ConditionSite(lineNumber, condition, join(context, earlier)));
-                blocks.push(new Block(Kind.ELSE_IF,
-                        join(earlier, List.of(new Requirement(lineNumber, condition, true))),
-                        join(earlier, List.of(new Requirement(lineNumber, condition, false)))));
-            } else if (SyntaxIdentifier.isElse(line)) {
-                blocks.push(new Block(Kind.ELSE, earlier, List.of()));
-            } else if (SyntaxIdentifier.isIf(line)) {
-                Condition condition = Condition.from(line);
-                sites.add(new ConditionSite(lineNumber, condition, context));
-                blocks.push(new Block(Kind.IF, List.of(new Requirement(lineNumber, condition, true)),
-                        List.of(new Requirement(lineNumber, condition, false))));
-            } else if (SyntaxIdentifier.isWhile(line)) {
-                Condition condition = Condition.from(line);
-                sites.add(new ConditionSite(lineNumber, condition, context));
-                blocks.push(new Block(Kind.LOOP, List.of(new Requirement(lineNumber, condition, true)), List.of()));
-            } else if (SyntaxIdentifier.isFor(line)) {
-                blocks.push(new Block(Kind.LOOP, List.of(), List.of()));
+    // ***************************************************************************
+    // Walking the structure
+    // ***************************************************************************
+
+    /**
+     * Records the conditions in a list of statements and the blocks inside them.
+     *
+     * @param statements the statements, in order
+     * @param path what holds when these statements run
+     * @param sites where to add the conditions found
+     */
+    private static void walk(List<Statement> statements, List<Requirement> path, List<ConditionSite> sites) {
+        for (Statement statement : statements) {
+            if (statement instanceof IfChain chain) {
+                walkIfChain(chain, path, sites);
+            } else if (statement instanceof Loop loop) {
+                walkLoop(loop, path, sites);
             }
         }
-        return sites;
+    }
+
+    /**
+     * Records the conditions of an {@code if} chain. Each {@code else if} and {@code else}
+     * requires the earlier conditions in the chain to be false.
+     *
+     * @param chain the chain
+     * @param path what holds when the chain starts
+     * @param sites where to add the conditions found
+     */
+    private static void walkIfChain(IfChain chain, List<Requirement> path, List<ConditionSite> sites) {
+        List<Requirement> earlierFalse = List.of();
+        for (Branch branch : chain.branches()) {
+            String header = branch.header().text();
+            boolean hasCondition = SyntaxIdentifier.isElseIf(header) || !SyntaxIdentifier.isElse(header);
+            if (!hasCondition) {
+                walk(branch.body().statements(), join(path, earlierFalse), sites);
+                return;
+            }
+            Condition condition = Condition.from(header);
+            sites.add(new ConditionSite(branch.header().number(), condition, join(path, earlierFalse)));
+            walk(branch.body().statements(), join(path, join(earlierFalse, requirement(branch.header(), condition, true))),
+                    sites);
+            earlierFalse = join(earlierFalse, requirement(branch.header(), condition, false));
+        }
+    }
+
+    /**
+     * Records a {@code while} loop's condition and the conditions in its body. A {@code for} loop
+     * adds no requirement, because its condition is not analyzed.
+     *
+     * @param loop the loop
+     * @param path what holds when the loop starts
+     * @param sites where to add the conditions found
+     */
+    private static void walkLoop(Loop loop, List<Requirement> path, List<ConditionSite> sites) {
+        if (!SyntaxIdentifier.isWhile(loop.header().text())) {
+            walk(loop.body().statements(), path, sites);
+            return;
+        }
+        Condition condition = Condition.from(loop.header().text());
+        sites.add(new ConditionSite(loop.header().number(), condition, path));
+        walk(loop.body().statements(), join(path, requirement(loop.header(), condition, true)), sites);
     }
 
     // ***************************************************************************
@@ -102,28 +126,15 @@ final class ConditionPaths {
     // ***************************************************************************
 
     /**
-     * Tells whether a line opens a block that this class tracks.
+     * Creates a one-element list requiring a condition to have an outcome.
      *
-     * @param line the stripped line
-     * @return true for {@code if}, {@code else}, {@code for} and {@code while} lines
+     * @param line the condition's line
+     * @param condition the condition
+     * @param outcome the required outcome
+     * @return the requirement in a list
      */
-    private static boolean isConditionalBlock(String line) {
-        return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElse(line) || SyntaxIdentifier.isLoop(line);
-    }
-
-    /**
-     * Collects what holds inside every open block, from the outermost to the innermost.
-     *
-     * @param blocks the open blocks, innermost first
-     * @return the requirements that lead to the current line
-     */
-    private static List<Requirement> context(Deque<Block> blocks) {
-        List<Requirement> context = new ArrayList<>();
-        Iterator<Block> outermostFirst = blocks.descendingIterator();
-        while (outermostFirst.hasNext()) {
-            context.addAll(outermostFirst.next().inside());
-        }
-        return context;
+    private static List<Requirement> requirement(Line line, Condition condition, boolean outcome) {
+        return List.of(new Requirement(line.number(), condition, outcome));
     }
 
     /**

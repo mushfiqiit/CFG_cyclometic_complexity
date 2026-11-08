@@ -1,35 +1,42 @@
 package io.github.mushfiqiit.cfg;
 
+import io.github.mushfiqiit.cfg.SourceTree.Block;
+import io.github.mushfiqiit.cfg.SourceTree.Branch;
+import io.github.mushfiqiit.cfg.SourceTree.Function;
+import io.github.mushfiqiit.cfg.SourceTree.IfChain;
+import io.github.mushfiqiit.cfg.SourceTree.Line;
+import io.github.mushfiqiit.cfg.SourceTree.Loop;
+import io.github.mushfiqiit.cfg.SourceTree.Simple;
+import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Builds a {@link ControlFlowGraph} from C source lines, with one node per non-blank line.
  *
- * <p>The source is expected to put each statement on its own line, open each block at the end
- * of its {@code if}, {@code else if}, {@code else}, {@code for} or {@code while} line, and close
- * it with a <code>}</code> line. Create a builder with {@link #from(List)}, which locates the root,
- * then call {@link #build()} once to link the remaining lines.
+ * <p>The lines are first read into a {@link SourceTree} by {@link SourceParser}; the graph is then
+ * linked by walking that tree. Create a builder with {@link #from(List)}, which reads the
+ * structure and creates the root, then call {@link #build()} once to link the remaining lines.
  *
  * @author sikde
  */
 public final class ControlFlowGraphBuilder {
 
     private final List<String> lines;
+    private final Function function;
     private final Node root;
-    private int nextLine;
     private boolean built;
 
     /**
-     * Creates a builder whose root is the given line. Use {@link #from(List)} to create builders.
+     * Creates a builder for a function that has already been read.
      *
      * @param lines the source lines; each line's index becomes its node number
-     * @param rootLine index of the line to use as the root
+     * @param function the function's structure
      */
-    private ControlFlowGraphBuilder(List<String> lines, int rootLine) {
+    private ControlFlowGraphBuilder(List<String> lines, Function function) {
         this.lines = lines;
-        this.root = new Node(rootLine, lines.get(rootLine));
-        this.nextLine = rootLine + 1;
+        this.function = function;
+        this.root = nodeFor(function.header());
     }
 
     // ***************************************************************************
@@ -37,30 +44,17 @@ public final class ControlFlowGraphBuilder {
     // ***************************************************************************
 
     /**
-     * Creates a builder for a source file, skipping blank and preamble lines and using the first
-     * line after them as the root. That line is normally the {@code main} function's opening line.
+     * Creates a builder for a source file. The first line that is not blank or preamble becomes
+     * the root; it is normally the {@code main} function's opening line.
      *
      * @param lines the source lines; each line's index becomes its node number
      * @return a builder that has found the root but not linked any other lines yet
-     * @throws IndexOutOfBoundsException if every line is blank or preamble
+     * @throws IllegalArgumentException if every line is blank or preamble
      */
     public static ControlFlowGraphBuilder from(List<String> lines) {
-        int rootLine = 0;
-        while (isPreamble(lines.get(rootLine))) {
-            rootLine++;
-        }
-        return new ControlFlowGraphBuilder(lines, rootLine);
-    }
-
-    /**
-     * Tells whether a line comes before the code to graph: a blank line, a line containing
-     * {@code intmain()}, or one starting with {@code #} or {@code /}.
-     *
-     * @param line the source line to check
-     * @return true if the line is part of the preamble
-     */
-    private static boolean isPreamble(String line) {
-        return line.isBlank() || line.contains("intmain(){") || line.charAt(0) == '#' || line.charAt(0) == '/';
+        Function function = SourceParser.parse(lines)
+                .orElseThrow(() -> new IllegalArgumentException("there is no code to build a graph from"));
+        return new ControlFlowGraphBuilder(lines, function);
     }
 
     // ***************************************************************************
@@ -87,60 +81,72 @@ public final class ControlFlowGraphBuilder {
             throw new IllegalStateException("build() can only be called once");
         }
         built = true;
-        buildBlock(List.of(root));
+        linkBlock(function.body(), List.of(root));
         return new ControlFlowGraph(root, lines);
     }
 
     /**
-     * Links the statements of a block, starting at the next line, until the line that closes the
-     * block or the end of the file. Blank lines are skipped.
+     * Links a block's statements in order, then its closing line.
      *
+     * @param block the block to link
      * @param entries the nodes that lead into the block's first statement
      * @return the nodes that lead out of the block: its closing line, or the last statements if
      *         the file ends before the block is closed
      */
-    private List<Node> buildBlock(List<Node> entries) {
+    private static List<Node> linkBlock(Block block, List<Node> entries) {
         List<Node> previous = entries;
-        while (nextLine < lines.size()) {
-            String statement = lines.get(nextLine);
-            if (statement.isBlank()) {
-                nextLine++;
-            } else if (SyntaxIdentifier.endsBlock(statement)) {
-                Node closing = readNode();
-                link(previous, closing);
-                return List.of(closing);
-            } else if (SyntaxIdentifier.isIf(statement) || SyntaxIdentifier.isElse(statement)) {
-                previous = buildIfChain(previous);
-            } else if (SyntaxIdentifier.isLoop(statement)) {
-                previous = buildLoop(previous);
-            } else {
-                Node node = readNode();
-                link(previous, node);
-                previous = List.of(node);
-            }
+        for (Statement statement : block.statements()) {
+            previous = linkStatement(statement, previous);
         }
-        return previous;
+        if (block.closing().isEmpty()) {
+            return previous;
+        }
+        Node closing = nodeFor(block.closing().get());
+        link(previous, closing);
+        return List.of(closing);
     }
 
     /**
-     * Links an {@code if} statement with its {@code else if} and {@code else} branches. Each
-     * condition leads to its own block and, when false, to the next branch. If the chain has no
-     * {@code else}, the last condition also leads to the statement after the chain.
+     * Links one statement after the nodes that lead into it.
      *
+     * @param statement the statement to link
+     * @param entries the nodes that lead into it
+     * @return the nodes that lead to the statement after it
+     */
+    private static List<Node> linkStatement(Statement statement, List<Node> entries) {
+        if (statement instanceof IfChain chain) {
+            return linkIfChain(chain, entries);
+        }
+        if (statement instanceof Loop loop) {
+            return linkLoop(loop, entries);
+        }
+        Node node = nodeFor(((Simple) statement).line());
+        link(entries, node);
+        return List.of(node);
+    }
+
+    /**
+     * Links an {@code if} chain. Each condition leads to its own block and, when false, to the
+     * next branch. If the chain has no {@code else}, the last condition also leads to the
+     * statement after the chain.
+     *
+     * @param chain the chain to link
      * @param entries the nodes that lead into the first condition
      * @return the nodes that lead to the statement after the chain
      */
-    private List<Node> buildIfChain(List<Node> entries) {
-        Node condition = readNode();
-        link(entries, condition);
-        List<Node> exits = new ArrayList<>(buildBlock(List.of(condition)));
-
-        Node falseBranch = condition;
-        while (falseBranch != null && nextNonBlankIsElse()) {
-            Node branch = readNode();
-            falseBranch.addChild(branch);
-            exits.addAll(buildBlock(List.of(branch)));
-            falseBranch = SyntaxIdentifier.isElseIf(branch.getStatement()) ? branch : null;
+    private static List<Node> linkIfChain(IfChain chain, List<Node> entries) {
+        List<Node> exits = new ArrayList<>();
+        Node falseBranch = null;
+        for (Branch branch : chain.branches()) {
+            Node header = nodeFor(branch.header());
+            if (falseBranch == null) {
+                link(entries, header);
+            } else {
+                falseBranch.addChild(header);
+            }
+            exits.addAll(linkBlock(branch.body(), List.of(header)));
+            boolean isCondition = falseBranch == null || SyntaxIdentifier.isElseIf(branch.header().text());
+            falseBranch = isCondition ? header : null;
         }
         if (falseBranch != null) {
             exits.add(falseBranch);
@@ -152,18 +158,19 @@ public final class ControlFlowGraphBuilder {
      * Links a {@code for} or {@code while} loop: the loop leads to its block, the end of the block
      * leads back to the loop, and the loop leads to the statement after it when it finishes.
      *
+     * @param loop the loop to link
      * @param entries the nodes that lead into the loop
      * @return the loop node, which leads to the statement after the loop
      */
-    private List<Node> buildLoop(List<Node> entries) {
-        Node loop = readNode();
-        link(entries, loop);
-        for (Node bodyExit : buildBlock(List.of(loop))) {
-            if (bodyExit != loop) {
-                bodyExit.addChild(loop);
+    private static List<Node> linkLoop(Loop loop, List<Node> entries) {
+        Node header = nodeFor(loop.header());
+        link(entries, header);
+        for (Node bodyExit : linkBlock(loop.body(), List.of(header))) {
+            if (bodyExit != header) {
+                bodyExit.addChild(header);
             }
         }
-        return List.of(loop);
+        return List.of(header);
     }
 
     // ***************************************************************************
@@ -171,26 +178,13 @@ public final class ControlFlowGraphBuilder {
     // ***************************************************************************
 
     /**
-     * Creates the node for the next line and moves past it.
+     * Creates the node for a line.
      *
-     * @return the new node
+     * @param line the line
+     * @return a node numbered by the line's index
      */
-    private Node readNode() {
-        Node node = new Node(nextLine, lines.get(nextLine));
-        nextLine++;
-        return node;
-    }
-
-    /**
-     * Skips blank lines and tells whether the next line continues an if chain.
-     *
-     * @return true if the next non-blank line starts with {@code else}
-     */
-    private boolean nextNonBlankIsElse() {
-        while (nextLine < lines.size() && lines.get(nextLine).isBlank()) {
-            nextLine++;
-        }
-        return nextLine < lines.size() && SyntaxIdentifier.isElse(lines.get(nextLine));
+    private static Node nodeFor(Line line) {
+        return new Node(line.index(), line.text());
     }
 
     /**
