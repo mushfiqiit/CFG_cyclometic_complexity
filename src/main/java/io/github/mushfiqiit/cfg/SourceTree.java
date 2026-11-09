@@ -2,6 +2,7 @@ package io.github.mushfiqiit.cfg;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * The structure of a C function, read once by {@link SourceParser}: which lines are statements,
@@ -39,7 +40,28 @@ final class SourceTree {
      * @param header the line that opens the function, such as <code>int main(void) {</code>
      * @param body the function's statements and closing line
      */
-    record Function(Line header, Block body) {
+    record Function(Line header, Block body) implements BlockOpener {
+    }
+
+    /**
+     * A line that opens a block, together with that block: the function, a branch of an
+     * {@code if} chain, or a loop.
+     */
+    interface BlockOpener {
+
+        /**
+         * Returns the line that opens the block.
+         *
+         * @return the opening line
+         */
+        Line header();
+
+        /**
+         * Returns the block this line opens.
+         *
+         * @return the block
+         */
+        Block body();
     }
 
     /**
@@ -59,10 +81,37 @@ final class SourceTree {
         Block {
             statements = List.copyOf(statements);
         }
+
+        /**
+         * Returns every statement in this block, including those in nested blocks, in line order.
+         *
+         * @return each statement, followed by the statements nested inside it
+         */
+        Stream<Statement> allStatements() {
+            return statements.stream().flatMap(Statement::withNested);
+        }
     }
 
     /** A statement in a block: a simple line, an {@code if} chain or a loop. */
     sealed interface Statement permits Simple, IfChain, Loop {
+
+        /**
+         * Returns the blocks directly inside this statement, each with the line that opens it.
+         *
+         * @return the branches of an {@code if} chain, the loop itself, or nothing for a simple
+         *         statement
+         */
+        List<BlockOpener> nestedBlocks();
+
+        /**
+         * Returns this statement followed by every statement nested inside it, in line order.
+         *
+         * @return this statement and the statements in its blocks, at any depth
+         */
+        default Stream<Statement> withNested() {
+            return Stream.concat(Stream.of(this),
+                    nestedBlocks().stream().flatMap(opener -> opener.body().allStatements()));
+        }
     }
 
     /**
@@ -71,6 +120,16 @@ final class SourceTree {
      * @param line the statement's line
      */
     record Simple(Line line) implements Statement {
+
+        /**
+         * Returns no blocks, because a simple statement does not open one.
+         *
+         * @return an empty list
+         */
+        @Override
+        public List<BlockOpener> nestedBlocks() {
+            return List.of();
+        }
     }
 
     /**
@@ -90,6 +149,16 @@ final class SourceTree {
         IfChain {
             branches = List.copyOf(branches);
         }
+
+        /**
+         * Returns the branches, each of which opens a block.
+         *
+         * @return the branches in order
+         */
+        @Override
+        public List<BlockOpener> nestedBlocks() {
+            return List.copyOf(branches);
+        }
     }
 
     /**
@@ -99,7 +168,7 @@ final class SourceTree {
      * @param header the {@code if}, {@code else if} or {@code else} line
      * @param body the branch's block
      */
-    record Branch(Kind kind, Line header, Block body) {
+    record Branch(Kind kind, Line header, Block body) implements BlockOpener {
 
         /** The keyword that opens a branch. */
         enum Kind {
@@ -128,7 +197,17 @@ final class SourceTree {
      * @param header the loop's line
      * @param body the loop's block
      */
-    record Loop(Kind kind, Line header, Block body) implements Statement {
+    record Loop(Kind kind, Line header, Block body) implements Statement, BlockOpener {
+
+        /**
+         * Returns the loop itself, which opens the loop body.
+         *
+         * @return a list holding only this loop
+         */
+        @Override
+        public List<BlockOpener> nestedBlocks() {
+            return List.of(this);
+        }
 
         /** The keyword that opens a loop. */
         enum Kind {

@@ -149,6 +149,40 @@ class SourceParserTest {
     }
 
     @Test
+    void allStatementsVisitsNestedBlocksInLineOrder() {
+        Function function = parse(List.of(
+                "int main(void) {",
+                "    a = 1;",
+                "    while (a > 0) {",
+                "        if (a > 1) {",
+                "            a = 2;",
+                "        }",
+                "        else {",
+                "            a = 3;",
+                "        }",
+                "    }",
+                "    b = 4;",
+                "}"));
+
+        List<Integer> firstLines = function.body().allStatements()
+                .map(statement -> statement instanceof Simple simple ? simple.line().number()
+                        : statement.nestedBlocks().get(0).header().number())
+                .toList();
+        assertEquals(List.of(2, 3, 4, 5, 8, 11), firstLines);
+    }
+
+    @Test
+    void nestedBlocksAreTheBranchesOrTheLoopItself() {
+        Function function = parse(List.of(
+                "int main(void) {", "    if (a) {", "    }", "    else {", "    }", "    for (;;) {", "    }", "    a = 1;", "}"));
+        List<Statement> statements = function.body().statements();
+
+        assertEquals(((IfChain) statements.get(0)).branches(), statements.get(0).nestedBlocks());
+        assertEquals(List.of(statements.get(1)), statements.get(1).nestedBlocks());
+        assertTrue(statements.get(2).nestedBlocks().isEmpty());
+    }
+
+    @Test
     void fileThatEndsEarlyLeavesBlocksUnclosed() {
         assertEquals(List.of(
                 "function 1",

@@ -1,11 +1,11 @@
 package io.github.mushfiqiit.cfg;
 
 import io.github.mushfiqiit.cfg.SourceTree.Block;
+import io.github.mushfiqiit.cfg.SourceTree.BlockOpener;
 import io.github.mushfiqiit.cfg.SourceTree.Branch;
 import io.github.mushfiqiit.cfg.SourceTree.Function;
 import io.github.mushfiqiit.cfg.SourceTree.IfChain;
 import io.github.mushfiqiit.cfg.SourceTree.Line;
-import io.github.mushfiqiit.cfg.SourceTree.Loop;
 import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -173,7 +173,7 @@ final class SourceFormatChecker {
                         + end.number()))));
 
         found.stream().min(Comparator.comparingInt(Problem::lineNumber)).ifPresentOrElse(problems::add,
-                () -> innermostUnclosed(function.header(), function.body()).ifPresent(line -> problems.add(
+                () -> innermostUnclosed(function).ifPresent(line -> problems.add(
                         new Problem(line.number(), "this block is never closed; add a } on its own line"))));
     }
 
@@ -184,18 +184,12 @@ final class SourceFormatChecker {
      * @param found where to add a problem for each one
      */
     private static void findElsesWithoutIf(Block block, List<Problem> found) {
-        for (Statement statement : block.statements()) {
-            if (statement instanceof IfChain chain) {
-                Branch first = chain.branches().get(0);
-                if (first.kind() != Branch.Kind.IF) {
-                    found.add(new Problem(first.header().number(),
-                            "this else has no matching if; it must come right after the } that closes an if or else if"));
-                }
-                chain.branches().forEach(branch -> findElsesWithoutIf(branch.body(), found));
-            } else if (statement instanceof Loop loop) {
-                findElsesWithoutIf(loop.body(), found);
-            }
-        }
+        block.allStatements()
+                .filter(IfChain.class::isInstance)
+                .map(statement -> ((IfChain) statement).branches().get(0))
+                .filter(first -> first.kind() != Branch.Kind.IF)
+                .forEach(first -> found.add(new Problem(first.header().number(),
+                        "this else has no matching if; it must come right after the } that closes an if or else if")));
     }
 
     /**
@@ -218,25 +212,21 @@ final class SourceFormatChecker {
      * Finds the innermost block that the file ends inside. Such blocks are always the last
      * statement of the block around them.
      *
-     * @param opener the line that opens {@code block}
-     * @param block the block to search
-     * @return the opening line of the innermost unclosed block, or an empty value if
-     *         {@code block} is closed
+     * @param opener the function, branch or loop whose block to search
+     * @return the opening line of the innermost unclosed block, or an empty value if the
+     *         opener's block is closed
      */
-    private static Optional<Line> innermostUnclosed(Line opener, Block block) {
-        if (block.closing().isPresent()) {
+    private static Optional<Line> innermostUnclosed(BlockOpener opener) {
+        if (opener.body().closing().isPresent()) {
             return Optional.empty();
         }
-        List<Statement> statements = block.statements();
-        Statement last = statements.isEmpty() ? null : statements.get(statements.size() - 1);
-        Optional<Line> inner = Optional.empty();
-        if (last instanceof Loop loop) {
-            inner = innermostUnclosed(loop.header(), loop.body());
-        } else if (last instanceof IfChain chain) {
-            Branch lastBranch = chain.branches().get(chain.branches().size() - 1);
-            inner = innermostUnclosed(lastBranch.header(), lastBranch.body());
+        List<Statement> statements = opener.body().statements();
+        if (statements.isEmpty()) {
+            return Optional.of(opener.header());
         }
-        return inner.isPresent() ? inner : Optional.of(opener);
+        List<BlockOpener> nested = statements.get(statements.size() - 1).nestedBlocks();
+        Optional<Line> inner = nested.isEmpty() ? Optional.empty() : innermostUnclosed(nested.get(nested.size() - 1));
+        return inner.or(() -> Optional.of(opener.header()));
     }
 
     // ***************************************************************************

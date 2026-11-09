@@ -1,6 +1,5 @@
 package io.github.mushfiqiit.cfg;
 
-import io.github.mushfiqiit.cfg.SourceTree.IfChain;
 import io.github.mushfiqiit.cfg.SourceTree.Loop;
 import io.github.mushfiqiit.cfg.SourceTree.Simple;
 import io.github.mushfiqiit.cfg.SourceTree.Statement;
@@ -54,28 +53,22 @@ public final class VariableConditionAnalysis {
      * @param source the source to scan
      */
     private void collect(ParsedSource source) {
-        collectDeclarations(source.statements());
+        source.statements().stream().flatMap(Statement::withNested).forEach(this::collectDeclaration);
         conditions = ConditionPaths.find(source);
     }
 
     /**
-     * Adds the variables declared in a list of statements and in the blocks inside them, in line
-     * order: those in {@code int} declarations and in {@code for} loop initializers.
+     * Adds the variables a single statement declares: those in an {@code int} declaration or in
+     * a {@code for} loop initializer. Called for each statement in line order, so the first
+     * declaration of a name wins.
      *
-     * @param statements the statements to scan
+     * @param statement the statement
      */
-    private void collectDeclarations(List<Statement> statements) {
-        for (Statement statement : statements) {
-            if (statement instanceof Simple simple && SyntaxIdentifier.isIntDeclaration(simple.line().text())) {
-                parseDeclaration(simple.line().text(), false);
-            } else if (statement instanceof Loop loop) {
-                if (loop.kind() == Loop.Kind.FOR) {
-                    parseForInitializer(loop.header().text());
-                }
-                collectDeclarations(loop.body().statements());
-            } else if (statement instanceof IfChain chain) {
-                chain.branches().forEach(branch -> collectDeclarations(branch.body().statements()));
-            }
+    private void collectDeclaration(Statement statement) {
+        if (statement instanceof Simple simple && SyntaxIdentifier.isIntDeclaration(simple.line().text())) {
+            parseDeclaration(simple.line().text(), false);
+        } else if (statement instanceof Loop loop && loop.kind() == Loop.Kind.FOR) {
+            parseForInitializer(loop.header().text());
         }
     }
 

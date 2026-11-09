@@ -4,7 +4,6 @@ import io.github.mushfiqiit.cfg.SourceTree.Branch;
 import io.github.mushfiqiit.cfg.SourceTree.IfChain;
 import io.github.mushfiqiit.cfg.SourceTree.Loop;
 import io.github.mushfiqiit.cfg.SourceTree.Statement;
-import java.util.List;
 
 /** Counts the decision points in a function, which gives the cyclomatic complexity. */
 public final class ComplexityCalculator {
@@ -21,27 +20,30 @@ public final class ComplexityCalculator {
      * @return the counts, whose {@link DecisionCounts#complexity()} is the cyclomatic complexity
      */
     static DecisionCounts countDecisions(ParsedSource source) {
-        return count(source.statements());
+        return source.statements().stream()
+                .flatMap(Statement::withNested)
+                .map(ComplexityCalculator::decisionsIn)
+                .reduce(DecisionCounts.NONE, DecisionCounts::plus);
     }
 
     /**
-     * Counts the decision points in a list of statements, including the blocks inside them.
+     * Counts the decision points a single statement opens, not counting the statements nested
+     * inside it.
      *
-     * @param statements the statements to scan
-     * @return the counts
+     * @param statement the statement
+     * @return one loop for a loop, the {@code if} and {@code else if} branches of an {@code if}
+     *         chain, or nothing for a simple statement
      */
-    private static DecisionCounts count(List<Statement> statements) {
-        DecisionCounts total = DecisionCounts.NONE;
-        for (Statement statement : statements) {
-            if (statement instanceof IfChain chain) {
-                for (Branch branch : chain.branches()) {
-                    total = total.plus(decisionAt(branch.kind())).plus(count(branch.body().statements()));
-                }
-            } else if (statement instanceof Loop loop) {
-                total = total.plus(new DecisionCounts(0, 0, 1)).plus(count(loop.body().statements()));
-            }
+    private static DecisionCounts decisionsIn(Statement statement) {
+        if (statement instanceof Loop) {
+            return new DecisionCounts(0, 0, 1);
         }
-        return total;
+        if (statement instanceof IfChain chain) {
+            return chain.branches().stream()
+                    .map(branch -> decisionAt(branch.kind()))
+                    .reduce(DecisionCounts.NONE, DecisionCounts::plus);
+        }
+        return DecisionCounts.NONE;
     }
 
     /**
