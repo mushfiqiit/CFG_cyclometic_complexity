@@ -65,30 +65,88 @@ final class SourceTree {
     }
 
     /**
-     * The statements between an opening line and its closing <code>}</code>.
-     *
-     * @param statements the statements, in order
-     * @param closing the line that closes the block, or an empty value if the file ends first
+     * The statements after an opening line: either closed by a <code>}</code> line, or cut off
+     * because the file ends first.
      */
-    record Block(List<Statement> statements, Optional<Line> closing) {
+    sealed interface Block permits Block.Closed, Block.Unclosed {
 
         /**
-         * Creates a block, keeping a read-only copy of the statements.
+         * A block that ends with its closing <code>}</code> line.
          *
          * @param statements the statements, in order
-         * @param closing the line that closes the block, if any
+         * @param closingLine the line that closes the block
          */
-        Block {
-            statements = List.copyOf(statements);
+        record Closed(List<Statement> statements, Line closingLine) implements Block {
+
+            /**
+             * Creates a block, keeping a read-only copy of the statements.
+             *
+             * @param statements the statements, in order
+             * @param closingLine the line that closes the block
+             */
+            public Closed {
+                statements = List.copyOf(statements);
+            }
+
+            /**
+             * Returns the line that closes the block.
+             *
+             * @return the closing line
+             */
+            @Override
+            public Optional<Line> closing() {
+                return Optional.of(closingLine);
+            }
         }
+
+        /**
+         * A block that the file ends inside, before its closing <code>}</code>.
+         *
+         * @param statements the statements, in order
+         */
+        record Unclosed(List<Statement> statements) implements Block {
+
+            /**
+             * Creates a block, keeping a read-only copy of the statements.
+             *
+             * @param statements the statements, in order
+             */
+            public Unclosed {
+                statements = List.copyOf(statements);
+            }
+
+            /**
+             * Returns no closing line, because the file ends first.
+             *
+             * @return an empty value
+             */
+            @Override
+            public Optional<Line> closing() {
+                return Optional.empty();
+            }
+        }
+
+        /**
+         * Returns the statements in the block.
+         *
+         * @return the statements, in order, as a read-only list
+         */
+        List<Statement> statements();
+
+        /**
+         * Returns the line that closes the block.
+         *
+         * @return the closing line, or an empty value if the file ends first
+         */
+        Optional<Line> closing();
 
         /**
          * Returns every statement in this block, including those in nested blocks, in line order.
          *
          * @return each statement, followed by the statements nested inside it
          */
-        Stream<Statement> allStatements() {
-            return statements.stream().flatMap(Statement::withNested);
+        default Stream<Statement> allStatements() {
+            return statements().stream().flatMap(Statement::withNested);
         }
     }
 

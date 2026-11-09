@@ -223,15 +223,13 @@ final class TestCaseGenerator {
                 .toList();
 
         ValueSearch.Result result = ValueSearch.search(constraints, free, startValues);
-        return switch (result.status()) {
-            case FOUND -> {
-                Map<String, Integer> chosen = new LinkedHashMap<>();
-                inputs.forEach(name -> chosen.put(name, result.values().orElseThrow().get(name)));
-                yield new TestCase(site, outcome, new Found(chosen));
-            }
-            case NO_SOLUTION -> noValues(site, outcome, new Contradiction());
-            case TOO_MANY_COMBINATIONS -> noValues(site, outcome, new TooManyCombinations());
-        };
+        if (result instanceof ValueSearch.Solved solved) {
+            Map<String, Integer> chosen = new LinkedHashMap<>();
+            inputs.forEach(name -> chosen.put(name, solved.values().get(name)));
+            return new TestCase(site, outcome, new Found(chosen));
+        }
+        Reason reason = result instanceof ValueSearch.TooLarge ? new TooManyCombinations() : new Contradiction();
+        return noValues(site, outcome, reason);
     }
 
     /**

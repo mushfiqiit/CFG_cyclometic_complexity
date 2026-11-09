@@ -46,6 +46,18 @@ final class SourceFormatChecker {
     // ***************************************************************************
 
     /**
+     * Describes the problem with a file that has no code, which {@link ParsedSource#of(List)}
+     * cannot parse. It is reported on the file's last line.
+     *
+     * @param lineCount the number of lines in the file
+     * @return the problem
+     */
+    static Problem noCode(int lineCount) {
+        return new Problem(Math.max(lineCount, 1),
+                "there is no code to analyze; the file needs a function such as \"int main(void) {\"");
+    }
+
+    /**
      * Checks source code against the supported layout. Problems within single lines are reported
      * for every line; problems with the overall structure are only checked when every line is
      * well formed, because a misplaced brace would make them misleading.
@@ -55,11 +67,7 @@ final class SourceFormatChecker {
      */
     static List<Problem> check(ParsedSource source) {
         List<String> code = source.lines();
-        if (source.function().isEmpty()) {
-            return List.of(new Problem(Math.max(code.size(), 1),
-                    "there is no code to analyze; the file needs a function such as \"int main(void) {\""));
-        }
-        Function function = source.function().orElseThrow();
+        Function function = source.function();
         int functionLine = function.header().index();
         String header = CLiterals.blankOut(code.get(functionLine).strip());
         if (!isFunctionHeader(header)) {

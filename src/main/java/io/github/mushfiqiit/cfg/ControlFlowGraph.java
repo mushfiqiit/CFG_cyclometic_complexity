@@ -86,7 +86,6 @@ public final class ControlFlowGraph {
      *
      * @param source the source to build the graph of
      * @return the graph
-     * @throws IllegalArgumentException if the source has no code
      */
     static ControlFlowGraph of(ParsedSource source) {
         return ControlFlowGraphBuilder.build(source);

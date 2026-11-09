@@ -18,7 +18,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void sampleProgramReport() {
-        String output = report(ParsedSource.of(program("sample.c")));
+        String output = report(TestSupport.parse(program("sample.c")));
 
         assertEquals(String.join("\n",
                 "",
@@ -66,7 +66,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void saysSoWhenThereAreNoVariablesOrConditions() {
-        String output = report(ParsedSource.of(List.of("\tint main(){", "}")));
+        String output = report(TestSupport.parse(List.of("\tint main(){", "}")));
 
         assertTrue(output.contains("  No int variables were declared."));
         assertTrue(output.contains("  No if, else if or while conditions were found."));
@@ -75,7 +75,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void emptyConditionIsShownWithDashes() {
-        String output = report(ParsedSource.of(List.of("if(){", "}")));
+        String output = report(TestSupport.parse(List.of("if(){", "}")));
 
         assertTrue(output.contains("  1     1  -          -         -"));
         assertTrue(output.contains("no values: the condition is too complex to solve"));
@@ -83,7 +83,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void declarationEndingInACommaAddsNoBlankVariable() {
-        String output = report(ParsedSource.of(List.of("  int y, ")));
+        String output = report(TestSupport.parse(List.of("  int y, ")));
 
         assertTrue(output.contains("  y         input\n\n"));
     }
@@ -106,14 +106,14 @@ class VariableConditionAnalysisTest {
 
     @Test
     void typicalProgramListsOnlyDeclaredVariablesIncludingForLoopCounters() {
-        String output = report(ParsedSource.of(program("typical.c")));
+        String output = report(TestSupport.parse(program("typical.c")));
 
         assertEquals(List.of("x", "y", "i"), variableNames(output));
     }
 
     @Test
     void namesAreReadWithoutInitialValuesPointersOrArraySizes() {
-        String output = report(ParsedSource.of(List.of(
+        String output = report(TestSupport.parse(List.of(
                 "    int a,b ,c , d;",
                 "\tint tabbed;",
                 "    int *p = &a, arr[3] = {1, 2, 3}, n = f(1, 2);",
@@ -126,7 +126,7 @@ class VariableConditionAnalysisTest {
 
     @Test
     void variablesShowWhereTheirValuesComeFrom() {
-        String output = report(ParsedSource.of(List.of(
+        String output = report(TestSupport.parse(List.of(
                 "int main(void) {",
                 "    int a, limit = 10, n = f(1);",
                 "    for (int i = 0; i < 3; i++) {",

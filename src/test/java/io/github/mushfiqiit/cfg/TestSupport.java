@@ -138,7 +138,18 @@ final class TestSupport {
      * @return the graph
      */
     static ControlFlowGraph build(List<String> lines) {
-        return ControlFlowGraph.of(ParsedSource.of(lines));
+        return ControlFlowGraph.of(parse(lines));
+    }
+
+    /**
+     * Parses a program that has code.
+     *
+     * @param lines the program's lines, which may contain comments
+     * @return the parsed source
+     * @throws java.util.NoSuchElementException if the program has no code
+     */
+    static ParsedSource parse(List<String> lines) {
+        return ParsedSource.of(lines).orElseThrow();
     }
 
     /**
@@ -149,7 +160,7 @@ final class TestSupport {
      * @return the test cases
      */
     static List<TestCaseGenerator.TestCase> generateTestCases(List<String> lines, Map<String, DeclaredVariable> declared) {
-        List<ConditionSite> sites = ConditionPaths.find(ParsedSource.of(lines));
+        List<ConditionSite> sites = ConditionPaths.find(parse(lines));
         return TestCaseGenerator.generate(sites, declared, TestCaseGenerator.inputNames(sites, declared));
     }
 

@@ -28,11 +28,11 @@ class ComplexityAgreementTest {
             List<String> lines = new ArrayList<>(List.of("#include<stdio.h>", "", "int main(void) {"));
             addStatements(lines, random, 1);
             lines.add("}");
-            assertEquals(List.of(), SourceFormatChecker.check(ParsedSource.of(CommentStripper.strip(lines))),
+            assertEquals(List.of(), SourceFormatChecker.check(TestSupport.parse(lines)),
                     () -> "a supported program was rejected:\n" + String.join("\n", lines));
             ControlFlowGraph graph = TestSupport.build(lines);
             int fromGraph = graph.countEdges() - graph.countNodes() + 2;
-            int fromDecisions = ComplexityCalculator.countDecisions(ParsedSource.of(lines)).complexity();
+            int fromDecisions = ComplexityCalculator.countDecisions(TestSupport.parse(lines)).complexity();
 
             assertEquals(fromDecisions, fromGraph, () -> "complexities differ for:\n" + String.join("\n", lines));
         }

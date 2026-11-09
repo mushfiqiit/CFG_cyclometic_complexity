@@ -202,9 +202,9 @@ class SourceParserTest {
 
     @Test
     void indentedHashLinesArePreambleForTheParserAndTheChecker() {
-        ParsedSource source = ParsedSource.of(List.of("  #include <stdio.h>", "", "int main(void) {", "    a = 1;", "}"));
+        ParsedSource source = TestSupport.parse(List.of("  #include <stdio.h>", "", "int main(void) {", "    a = 1;", "}"));
 
-        assertEquals(3, source.requireFunction().header().number());
+        assertEquals(3, source.function().header().number());
         assertTrue(SourceFormatChecker.check(source).isEmpty());
         assertEquals(2, ControlFlowGraph.of(source).entry());
     }
@@ -221,7 +221,7 @@ class SourceParserTest {
 
     @Test
     void fileWithoutCodeHasNoFunction() {
-        assertTrue(ParsedSource.of(List.of("#include <stdio.h>", "", "// comment")).function().isEmpty());
+        assertTrue(ParsedSource.of(List.of("#include <stdio.h>", "", "// comment")).isEmpty());
         assertTrue(SourceParser.parse(List.of()).isEmpty());
     }
 
@@ -230,10 +230,5 @@ class SourceParserTest {
         Function function = parse(program("sample.c"));
 
         assertThrows(UnsupportedOperationException.class, () -> function.body().statements().clear());
-    }
-
-    @Test
-    void builderRejectsAFileWithoutCode() {
-        assertThrows(IllegalArgumentException.class, () -> ControlFlowGraph.of(ParsedSource.of(List.of("#include <stdio.h>"))));
     }
 }

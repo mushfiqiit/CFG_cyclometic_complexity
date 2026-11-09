@@ -41,10 +41,9 @@ final class ControlFlowGraphBuilder {
      *
      * @param source the source to build the graph of
      * @return the graph
-     * @throws IllegalArgumentException if the source has no code
      */
     static ControlFlowGraph build(ParsedSource source) {
-        Function function = source.requireFunction();
+        Function function = source.function();
         ControlFlowGraphBuilder builder = new ControlFlowGraphBuilder(source.lines().size());
         int entry = function.header().index();
         builder.linkBlock(function.body(), List.of(entry));
@@ -63,10 +62,10 @@ final class ControlFlowGraphBuilder {
         for (Statement statement : block.statements()) {
             previous = linkStatement(statement, previous);
         }
-        if (block.closing().isEmpty()) {
+        if (!(block instanceof Block.Closed closed)) {
             return previous;
         }
-        int closing = block.closing().orElseThrow().index();
+        int closing = closed.closingLine().index();
         link(previous, closing);
         return List.of(closing);
     }

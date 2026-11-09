@@ -11,7 +11,7 @@ class ComplexityCalculatorTest {
 
     @Test
     void sampleProgramCountsEachKindOfDecision() {
-        DecisionCounts counts = ComplexityCalculator.countDecisions(ParsedSource.of(program("sample.c")));
+        DecisionCounts counts = ComplexityCalculator.countDecisions(TestSupport.parse(program("sample.c")));
 
         assertEquals(new DecisionCounts(1, 2, 1), counts);
         assertEquals(4, counts.total());
@@ -20,7 +20,7 @@ class ComplexityCalculatorTest {
 
     @Test
     void forAndWhileAreBothLoops() {
-        DecisionCounts counts = ComplexityCalculator.countDecisions(ParsedSource.of(List.of(
+        DecisionCounts counts = ComplexityCalculator.countDecisions(TestSupport.parse(List.of(
                 "for(i=0;i<3;i++){", "while (a != b) {", "do {")));
 
         assertEquals(new DecisionCounts(0, 0, 2), counts);
@@ -28,7 +28,7 @@ class ComplexityCalculatorTest {
 
     @Test
     void plainElseIsNotADecisionPoint() {
-        DecisionCounts counts = ComplexityCalculator.countDecisions(ParsedSource.of(List.of(
+        DecisionCounts counts = ComplexityCalculator.countDecisions(TestSupport.parse(List.of(
                 "if(a){", "}", "else{", "}", "elsewhere=1;")));
 
         assertEquals(new DecisionCounts(1, 0, 0), counts);
@@ -37,7 +37,7 @@ class ComplexityCalculatorTest {
 
     @Test
     void programWithoutBranchesHasComplexityOne() {
-        assertEquals(1, ComplexityCalculator.countDecisions(ParsedSource.of(List.of("int main(){", "return 0;", "}")))
+        assertEquals(1, ComplexityCalculator.countDecisions(TestSupport.parse(List.of("int main(){", "return 0;", "}")))
                 .complexity());
     }
 }

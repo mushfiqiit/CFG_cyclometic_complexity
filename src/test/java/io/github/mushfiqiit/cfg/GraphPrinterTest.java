@@ -68,7 +68,7 @@ class GraphPrinterTest {
     @Test
     void complexityShowsBothFormulasAndTheDecisionPoints() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(sample))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(TestSupport.parse(sample))));
 
         assertEquals(String.join("\n",
                 "",
@@ -85,7 +85,7 @@ class GraphPrinterTest {
         List<String> lines = program("two-preamble-lines.c");
 
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(lines))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(TestSupport.parse(lines))));
 
         // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
         assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
@@ -109,7 +109,7 @@ class GraphPrinterTest {
     @Test
     void doesNotWarnWhenTheResultsAgree() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(sample))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(TestSupport.parse(sample))));
 
         assertTrue(!output.contains("Warning"));
     }

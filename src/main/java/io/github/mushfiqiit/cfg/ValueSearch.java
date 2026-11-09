@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -17,23 +16,33 @@ import java.util.TreeSet;
  */
 final class ValueSearch {
 
-    /** What a search found. */
-    enum Status {
-        /** Values were found. */
-        FOUND,
-        /** Every combination was tried and none works. */
-        NO_SOLUTION,
-        /** There were too many combinations, so none were tried. */
-        TOO_MANY_COMBINATIONS
+    /** What a search found: values that work, or why there are none. */
+    sealed interface Result permits Solved, Unsolvable, TooLarge {
     }
 
     /**
-     * The result of a search.
+     * Values that give every comparison its required outcome.
      *
-     * @param status what the search found
-     * @param values every variable's value, when {@code status} is {@link Status#FOUND}
+     * @param values every variable's value
      */
-    record Result(Status status, Optional<Map<String, Integer>> values) {
+    record Solved(Map<String, Integer> values) implements Result {
+
+        /**
+         * Creates a result, keeping a read-only copy of the values.
+         *
+         * @param values every variable's value
+         */
+        Solved {
+            values = Map.copyOf(values);
+        }
+    }
+
+    /** Every combination was tried and none works. */
+    record Unsolvable() implements Result {
+    }
+
+    /** There were too many combinations, so none were tried. */
+    record TooLarge() implements Result {
     }
 
     private static final List<Integer> SMALL_VALUES = List.of(0, 1, -1, 2, -2);
@@ -69,7 +78,7 @@ final class ValueSearch {
         }
         List<Integer> candidates = candidates(constraints.keySet(), startValues);
         if (exceedsSearchLimit(candidates.size(), free.size())) {
-            return new Result(Status.TOO_MANY_COMBINATIONS, Optional.empty());
+            return new TooLarge();
         }
         Map<String, Integer> values = new LinkedHashMap<>(startValues);
         for (int width = 1; width <= candidates.size(); width++) {
@@ -82,11 +91,11 @@ final class ValueSearch {
                     values.put(free.get(i), candidates.get(choice[i]));
                 }
                 if (allHold(constraints, values)) {
-                    return new Result(Status.FOUND, Optional.of(Map.copyOf(values)));
+                    return new Solved(values);
                 }
             } while (advance(choice, width));
         }
-        return new Result(Status.NO_SOLUTION, Optional.empty());
+        return new Unsolvable();
     }
 
     /**

@@ -47,13 +47,14 @@ final class SourceLoader {
         }
         out.println("Source file: " + sourceFile + " (" + lines.size() + " lines)");
 
-        ParsedSource source = ParsedSource.of(lines);
-        List<SourceFormatChecker.Problem> problems = SourceFormatChecker.check(source);
+        Optional<ParsedSource> source = ParsedSource.of(lines);
+        List<SourceFormatChecker.Problem> problems = source.map(SourceFormatChecker::check)
+                .orElseGet(() -> List.of(SourceFormatChecker.noCode(lines.size())));
         if (!problems.isEmpty()) {
             printProblems(err, sourceFile, problems);
             return Optional.empty();
         }
-        return Optional.of(source);
+        return source;
     }
 
     // ***************************************************************************

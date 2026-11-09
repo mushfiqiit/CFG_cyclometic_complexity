@@ -1,14 +1,16 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.mushfiqiit.cfg.ValueSearch.Result;
-import io.github.mushfiqiit.cfg.ValueSearch.Status;
+import io.github.mushfiqiit.cfg.ValueSearch.Solved;
+import io.github.mushfiqiit.cfg.ValueSearch.TooLarge;
+import io.github.mushfiqiit.cfg.ValueSearch.Unsolvable;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Checks that the search finds the simplest values, and reports when there are none. */
@@ -39,15 +41,14 @@ class ValueSearchTest {
     void prefersTheSimplestValues() {
         Result result = ValueSearch.search(require(comparison("a", ">", "b"), true), List.of("a", "b"), zeros("a", "b"));
 
-        assertEquals(Status.FOUND, result.status());
-        assertEquals(Map.of("a", 1, "b", 0), result.values().orElseThrow());
+        assertEquals(new Solved(Map.of("a", 1, "b", 0)), result);
     }
 
     @Test
     void triesTheNeighboursOfEachConstant() {
         Result result = ValueSearch.search(require(comparison("a", ">", "2"), true), List.of("a"), zeros("a"));
 
-        assertEquals(Map.of("a", 3), result.values().orElseThrow());
+        assertEquals(Map.of("a", 3), assertInstanceOf(Solved.class, result).values());
     }
 
     @Test
@@ -57,7 +58,7 @@ class ValueSearchTest {
 
         Result result = ValueSearch.search(require(comparison("x", ">", "y"), false), List.of("y"), start);
 
-        assertEquals(Map.of("x", 5, "y", 5), result.values().orElseThrow());
+        assertEquals(Map.of("x", 5, "y", 5), assertInstanceOf(Solved.class, result).values());
     }
 
     @Test
@@ -66,7 +67,7 @@ class ValueSearchTest {
                 require(comparison("a", ">", "b"), true, comparison("b", ">", "a"), true),
                 List.of("a", "b"), zeros("a", "b"));
 
-        assertEquals(new Result(Status.NO_SOLUTION, Optional.empty()), result);
+        assertEquals(new Unsolvable(), result);
     }
 
     /** With start values of 0 and no constants, each variable has 5 candidates (-2 to 2). */
@@ -76,9 +77,8 @@ class ValueSearchTest {
         String[] seven = {"a", "b", "c", "d", "e", "f", "g"};
         String[] eight = {"a", "b", "c", "d", "e", "f", "g", "h"};
 
-        assertEquals(Status.FOUND, ValueSearch.search(constraints, List.of(seven), zeros(seven)).status());
-        assertEquals(Status.TOO_MANY_COMBINATIONS,
-                ValueSearch.search(constraints, List.of(eight), zeros(eight)).status());
+        assertInstanceOf(Solved.class, ValueSearch.search(constraints, List.of(seven), zeros(seven)));
+        assertEquals(new TooLarge(), ValueSearch.search(constraints, List.of(eight), zeros(eight)));
     }
 
     @Test
@@ -91,28 +91,28 @@ class ValueSearchTest {
 
         Result result = ValueSearch.search(constraints, List.of(names), zeros(names));
 
-        assertEquals(Status.TOO_MANY_COMBINATIONS, result.status());
+        assertEquals(new TooLarge(), result);
     }
 
     @Test
     void succeedsWithoutFreeVariablesWhenTheConstraintsAlreadyHold() {
         Result result = ValueSearch.search(require(comparison("x", "==", "5"), true), List.of(), Map.of("x", 5));
 
-        assertEquals(Map.of("x", 5), result.values().orElseThrow());
+        assertEquals(Map.of("x", 5), assertInstanceOf(Solved.class, result).values());
     }
 
     @Test
     void neighboursOfTheLargestIntDoNotWrapAround() {
         Result result = ValueSearch.search(require(comparison("a", "<", "2147483647"), true), List.of("a"), zeros("a"));
 
-        assertEquals(Map.of("a", 0), result.values().orElseThrow());
+        assertEquals(Map.of("a", 0), assertInstanceOf(Solved.class, result).values());
     }
 
     @Test
     void variablesNeedAStartingValueUnlessTheSearchSetsThem() {
         Map<Comparison, Boolean> constraints = require(comparison("a", ">", "b"), true);
 
-        assertEquals(Status.FOUND, ValueSearch.search(constraints, List.of("a", "b"), Map.of()).status());
+        assertInstanceOf(Solved.class, ValueSearch.search(constraints, List.of("a", "b"), Map.of()));
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ValueSearch.search(constraints, List.of("a"), Map.of()));
         assertEquals("no starting value for variable b", failure.getMessage());

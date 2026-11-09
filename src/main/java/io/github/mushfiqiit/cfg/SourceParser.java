@@ -103,7 +103,7 @@ final class SourceParser {
             if (text.isBlank()) {
                 nextLine++;
             } else if (SyntaxIdentifier.endsBlock(text)) {
-                return new Block(statements, Optional.of(takeLine()));
+                return new Block.Closed(statements, takeLine());
             } else if (SyntaxIdentifier.isIf(text) || SyntaxIdentifier.isElse(text)) {
                 statements.add(readIfChain());
             } else if (SyntaxIdentifier.isLoop(text)) {
@@ -113,7 +113,7 @@ final class SourceParser {
                 statements.add(new Simple(takeLine()));
             }
         }
-        return new Block(statements, Optional.empty());
+        return new Block.Unclosed(statements);
     }
 
     /**

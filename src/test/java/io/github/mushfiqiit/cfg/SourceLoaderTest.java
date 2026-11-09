@@ -39,7 +39,7 @@ class SourceLoaderTest {
         assertEquals("Source file: " + file + " (3 lines)\n", output);
         assertEquals("", errors);
         assertEquals("int main(void) {", loaded.orElseThrow().lines().get(0));
-        assertEquals(1, loaded.orElseThrow().function().orElseThrow().body().statements().size());
+        assertEquals(1, loaded.orElseThrow().function().body().statements().size());
     }
 
     @Test
