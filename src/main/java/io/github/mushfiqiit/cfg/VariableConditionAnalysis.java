@@ -226,8 +226,8 @@ public final class VariableConditionAnalysis {
         ConsoleTable table = new ConsoleTable("#", "Line", "Condition", "Operator", "Operands").alignRight(0, 1);
         for (int i = 0; i < conditions.size(); i++) {
             Condition condition = conditions.get(i).condition();
-            table.addRow(i + 1, conditions.get(i).lineNumber(), orDash(condition.getText()),
-                    orDash(condition.getComparisonSign()), orDash(String.join(", ", condition.getOperands())));
+            table.addRow(i + 1, conditions.get(i).lineNumber(), orDash(condition.text()),
+                    condition.operator().orElse("-"), orDash(String.join(", ", condition.operands())));
         }
         table.print(out);
     }
@@ -282,12 +282,12 @@ public final class VariableConditionAnalysis {
     }
 
     /**
-     * Replaces a missing or empty value with {@code -}.
+     * Replaces an empty value with {@code -}.
      *
      * @param value the value to show
-     * @return the value, or {@code -} if it is null or empty
+     * @return the value, or {@code -} if it is empty
      */
     private static String orDash(String value) {
-        return value == null || value.isEmpty() ? "-" : value;
+        return value.isEmpty() ? "-" : value;
     }
 }

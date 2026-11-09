@@ -75,7 +75,7 @@ final class TestCaseGenerator {
                 .filter(variable -> variable.source() == DeclaredVariable.Source.INPUT)
                 .forEach(variable -> names.add(variable.name()));
         for (ConditionSite site : sites) {
-            for (String operand : site.condition().getOperands()) {
+            for (String operand : site.condition().operands()) {
                 if (Comparison.isVariable(operand) && !declared.containsKey(operand)) {
                     names.add(operand);
                 }

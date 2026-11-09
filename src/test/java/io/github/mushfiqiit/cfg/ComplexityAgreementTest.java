@@ -92,13 +92,13 @@ class ComplexityAgreementTest {
     /** Evaluates each required comparison independently of the generator. */
     private static boolean allHold(List<ConditionSite.Requirement> required, Map<String, Integer> values) {
         for (ConditionSite.Requirement step : required) {
-            List<String> operands = step.condition().getOperands();
-            int left = value(operands.get(0), values);
-            int right = value(operands.get(1), values);
-            boolean holds = switch (step.condition().getComparisonSign()) {
+            Condition.Compare comparison = (Condition.Compare) step.condition();
+            int left = value(comparison.left(), values);
+            int right = value(comparison.right(), values);
+            boolean holds = switch (comparison.sign()) {
                 case ">" -> left > right;
                 case "<" -> left < right;
-                default -> throw new AssertionError("unexpected operator in " + step.condition().getText());
+                default -> throw new AssertionError("unexpected operator in " + comparison.text());
             };
             if (holds != step.outcome()) {
                 return false;

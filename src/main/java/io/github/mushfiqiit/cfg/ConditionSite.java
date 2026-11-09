@@ -40,6 +40,6 @@ record ConditionSite(int lineNumber, Condition condition, List<Requirement> path
      * @return the line number and the condition's text
      */
     String describe() {
-        return "line " + lineNumber + ": " + condition.getText();
+        return "line " + lineNumber + ": " + condition.text();
     }
 }

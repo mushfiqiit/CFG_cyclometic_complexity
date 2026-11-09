@@ -1,14 +1,18 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.mushfiqiit.cfg.Condition.Compare;
+import io.github.mushfiqiit.cfg.Condition.Negation;
+import io.github.mushfiqiit.cfg.Condition.Truthy;
+import io.github.mushfiqiit.cfg.Condition.Unsolvable;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** Pins down how conditions are parsed from {@code if}, {@code else if} and {@code while} lines. */
 class ConditionTest {
@@ -17,34 +21,31 @@ class ConditionTest {
     void parsesASimpleComparison() {
         Condition condition = Condition.from("\t    while(k>0){");
 
-        assertEquals("k>0", condition.getText());
-        assertEquals(">", condition.getComparisonSign());
-        assertEquals(List.of("k", "0"), condition.getOperands());
+        assertEquals(new Compare("k>0", "k", ">", "0"), condition);
+        assertEquals(Optional.of(">"), condition.operator());
+        assertEquals(List.of("k", "0"), condition.operands());
     }
 
     @Test
     void parsesSpacedOperatorsAndElseIf() {
-        Condition condition = Condition.from("    else if (a <= b) {");
-
-        assertEquals("a <= b", condition.getText());
-        assertEquals("<=", condition.getComparisonSign());
-        assertEquals(List.of("a", "b"), condition.getOperands());
+        assertEquals(new Compare("a <= b", "a", "<=", "b"), Condition.from("    else if (a <= b) {"));
     }
 
     @Test
-    void conditionWithoutOperatorHasNoComparisonSign() {
+    void singleOperandHasNoOperator() {
         Condition condition = Condition.from("if(a){");
 
-        assertNull(condition.getComparisonSign());
-        assertEquals(List.of("a"), condition.getOperands());
+        assertEquals(new Truthy("a", "a"), condition);
+        assertEquals(Optional.empty(), condition.operator());
+        assertEquals(List.of("a"), condition.operands());
     }
 
     @Test
     void emptyConditionHasNoTextOrOperands() {
         Condition condition = Condition.from("if(){");
 
-        assertEquals("", condition.getText());
-        assertTrue(condition.getOperands().isEmpty());
+        assertEquals(new Unsolvable(""), condition);
+        assertTrue(condition.operands().isEmpty());
     }
 
     @ParameterizedTest
@@ -53,27 +54,33 @@ class ConditionTest {
     void complexConditionsKeepOnlyTheirText(String line) {
         Condition condition = Condition.from(line);
 
-        assertTrue(line.contains(condition.getText()), condition.getText());
-        assertNull(condition.getComparisonSign());
-        assertTrue(condition.getOperands().isEmpty());
+        assertTrue(condition instanceof Unsolvable, condition::toString);
+        assertTrue(line.contains(condition.text()), condition.text());
+        assertEquals(Optional.empty(), condition.operator());
+        assertTrue(condition.operands().isEmpty());
+        assertEquals(Optional.empty(), condition.toComparison());
     }
 
     @Test
     void negationAndNegativeNumbersAreRead() {
         Condition negation = Condition.from("if (! done) {");
-        Condition negative = Condition.from("if (a < - 5) {");
 
-        assertEquals("!", negation.getComparisonSign());
-        assertEquals(List.of("done"), negation.getOperands());
-        assertEquals("<", negative.getComparisonSign());
-        assertEquals(List.of("a", "-5"), negative.getOperands());
+        assertEquals(new Negation("! done", "done"), negation);
+        assertEquals(Optional.of("!"), negation.operator());
+        assertEquals(new Compare("a < - 5", "a", "<", "-5"), Condition.from("if (a < - 5) {"));
+    }
+
+    @Test
+    void eachKindTurnsIntoItsComparison() {
+        assertEquals(Comparison.of("a", "<", "b"), Condition.from("if (a < b) {").toComparison());
+        assertEquals(Comparison.of("done", "==", "0"), Condition.from("if (!done) {").toComparison());
+        assertEquals(Comparison.of("flag", "!=", "0"), Condition.from("if (flag) {").toComparison());
     }
 
     @Test
     void operandsCannotBeChangedFromOutside() {
         Condition condition = Condition.from("if(a>b){");
 
-        assertThrows(UnsupportedOperationException.class,
-                () -> condition.getOperands().add("c"));
+        assertThrows(UnsupportedOperationException.class, () -> condition.operands().add("c"));
     }
 }

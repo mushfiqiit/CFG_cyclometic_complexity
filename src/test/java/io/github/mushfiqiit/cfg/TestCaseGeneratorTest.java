@@ -146,12 +146,13 @@ class TestCaseGeneratorTest {
 
     /** Evaluates a two-operand comparison independently of the generator. */
     private static boolean holds(Condition condition, Map<String, Integer> values) {
-        int left = value(condition.getOperands().get(0), values);
-        int right = value(condition.getOperands().get(1), values);
-        return switch (condition.getComparisonSign()) {
+        Condition.Compare comparison = (Condition.Compare) condition;
+        int left = value(comparison.left(), values);
+        int right = value(comparison.right(), values);
+        return switch (comparison.sign()) {
             case ">" -> left > right;
             case "==" -> left == right;
-            default -> throw new AssertionError("unexpected operator " + condition.getComparisonSign());
+            default -> throw new AssertionError("unexpected operator " + comparison.sign());
         };
     }
 
