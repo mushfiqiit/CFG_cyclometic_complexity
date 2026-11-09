@@ -147,7 +147,7 @@ class TestCaseGeneratorTest {
         Condition.Compare comparison = (Condition.Compare) condition;
         int left = value(comparison.left(), values);
         int right = value(comparison.right(), values);
-        return switch (comparison.sign()) {
+        return switch (comparison.sign().symbol()) {
             case ">" -> left > right;
             case "==" -> left == right;
             default -> throw new AssertionError("unexpected operator " + comparison.sign());

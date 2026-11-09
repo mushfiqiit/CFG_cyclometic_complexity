@@ -21,14 +21,14 @@ class ConditionTest {
     void parsesASimpleComparison() {
         Condition condition = Condition.from("\t    while(k>0){");
 
-        assertEquals(new Compare("k>0", "k", ">", "0"), condition);
+        assertEquals(new Compare("k>0", "k", Operator.GREATER, "0"), condition);
         assertEquals(Optional.of(">"), condition.operator());
         assertEquals(List.of("k", "0"), condition.operands());
     }
 
     @Test
     void parsesSpacedOperatorsAndElseIf() {
-        assertEquals(new Compare("a <= b", "a", "<=", "b"), Condition.from("    else if (a <= b) {"));
+        assertEquals(new Compare("a <= b", "a", Operator.LESS_OR_EQUAL, "b"), Condition.from("    else if (a <= b) {"));
     }
 
     @Test
@@ -67,14 +67,14 @@ class ConditionTest {
 
         assertEquals(new Negation("! done", "done"), negation);
         assertEquals(Optional.of("!"), negation.operator());
-        assertEquals(new Compare("a < - 5", "a", "<", "-5"), Condition.from("if (a < - 5) {"));
+        assertEquals(new Compare("a < - 5", "a", Operator.LESS, "-5"), Condition.from("if (a < - 5) {"));
     }
 
     @Test
     void eachKindTurnsIntoItsComparison() {
-        assertEquals(Comparison.of("a", "<", "b"), Condition.from("if (a < b) {").toComparison());
-        assertEquals(Comparison.of("done", "==", "0"), Condition.from("if (!done) {").toComparison());
-        assertEquals(Comparison.of("flag", "!=", "0"), Condition.from("if (flag) {").toComparison());
+        assertEquals(Comparison.of("a", Operator.LESS, "b"), Condition.from("if (a < b) {").toComparison());
+        assertEquals(Comparison.of("done", Operator.EQUAL, "0"), Condition.from("if (!done) {").toComparison());
+        assertEquals(Comparison.of("flag", Operator.NOT_EQUAL, "0"), Condition.from("if (flag) {").toComparison());
     }
 
     @Test

@@ -11,6 +11,7 @@ import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Reads C source lines into a {@link SourceTree}. This is the only class that walks through the
@@ -49,10 +50,7 @@ final class SourceParser {
      * @return the function, or an empty value if every line is blank or preamble
      */
     static Optional<Function> parse(List<String> lines) {
-        int header = 0;
-        while (header < lines.size() && isPreamble(lines.get(header))) {
-            header++;
-        }
+        int header = skipLines(lines, 0, SourceParser::isPreamble);
         if (header == lines.size()) {
             return Optional.empty();
         }
@@ -61,14 +59,32 @@ final class SourceParser {
     }
 
     /**
-     * Tells whether a line comes before the function: a blank line or one starting with
-     * {@code #}, such as {@code #include <stdio.h>}. Comments are already removed.
+     * Tells whether a line comes before the function: a blank line or one whose first
+     * non-blank character is {@code #}, such as {@code #include <stdio.h>}. Comments are already
+     * removed.
      *
      * @param line the source line to check
      * @return true if the line is part of the preamble
      */
     private static boolean isPreamble(String line) {
-        return line.isBlank() || line.charAt(0) == '#';
+        return line.isBlank() || line.strip().startsWith("#");
+    }
+
+    /**
+     * Finds the first line, from a given position on, that is not skipped. This is the only
+     * place lines are skipped, so every class skips them the same way.
+     *
+     * @param lines the source lines
+     * @param from the index to start from
+     * @param skipped which lines to move past, such as {@code String::isBlank}
+     * @return the index of the first line not skipped, or {@code lines.size()} if there is none
+     */
+    static int skipLines(List<String> lines, int from, Predicate<String> skipped) {
+        int index = from;
+        while (index < lines.size() && skipped.test(lines.get(index))) {
+            index++;
+        }
+        return index;
     }
 
     // ***************************************************************************
@@ -175,9 +191,7 @@ final class SourceParser {
      * @return true if the next non-blank line continues an {@code if} chain
      */
     private boolean nextNonBlankLineIsElse() {
-        while (nextLine < lines.size() && lines.get(nextLine).isBlank()) {
-            nextLine++;
-        }
+        nextLine = skipLines(lines, nextLine, String::isBlank);
         return nextLine < lines.size() && SyntaxIdentifier.isElse(lines.get(nextLine));
     }
 }

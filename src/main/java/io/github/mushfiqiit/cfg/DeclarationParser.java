@@ -95,7 +95,7 @@ final class DeclarationParser {
             }
             String[] parts = declarator.split("=", 2);
             String initializer = parts.length == 2 ? parts[1].strip() : "";
-            OptionalInt value = Comparison.parseInteger(initializer);
+            OptionalInt value = CTokens.parseInteger(initializer);
             DeclaredVariable variable;
             if (loopCounter || (!initializer.isEmpty() && value.isEmpty())) {
                 variable = DeclaredVariable.computed(name);

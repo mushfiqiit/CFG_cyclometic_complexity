@@ -95,7 +95,7 @@ class ComplexityAgreementTest {
             Condition.Compare comparison = (Condition.Compare) step.condition();
             int left = value(comparison.left(), values);
             int right = value(comparison.right(), values);
-            boolean holds = switch (comparison.sign()) {
+            boolean holds = switch (comparison.sign().symbol()) {
                 case ">" -> left > right;
                 case "<" -> left < right;
                 default -> throw new AssertionError("unexpected operator in " + comparison.text());

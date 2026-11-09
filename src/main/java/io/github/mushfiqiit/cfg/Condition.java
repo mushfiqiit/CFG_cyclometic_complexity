@@ -24,19 +24,19 @@ sealed interface Condition
      *
      * @param text the condition as written in the source
      * @param left the left operand, without whitespace
-     * @param sign the comparison operator, such as {@code "<="}
+     * @param sign the comparison operator
      * @param right the right operand, without whitespace
      */
-    record Compare(String text, String left, String sign, String right) implements Condition {
+    record Compare(String text, String left, Operator sign, String right) implements Condition {
 
         /**
-         * Returns the operator.
+         * Returns the operator's symbol.
          *
-         * @return the comparison operator, such as {@code "<="}
+         * @return the comparison operator's symbol, such as {@code "<="}
          */
         @Override
         public Optional<String> operator() {
-            return Optional.of(sign);
+            return Optional.of(sign.symbol());
         }
 
         /**
@@ -97,7 +97,7 @@ sealed interface Condition
          */
         @Override
         public Optional<Comparison> toComparison() {
-            return Comparison.of(operand, "==", "0");
+            return Comparison.of(operand, Operator.EQUAL, "0");
         }
     }
 
@@ -137,7 +137,7 @@ sealed interface Condition
          */
         @Override
         public Optional<Comparison> toComparison() {
-            return Comparison.of(operand, "!=", "0");
+            return Comparison.of(operand, Operator.NOT_EQUAL, "0");
         }
     }
 
@@ -199,8 +199,8 @@ sealed interface Condition
 
         /** A variable name or an integer. */
         private static final String OPERAND = CTokens.IDENTIFIER.pattern() + "|" + CTokens.INTEGER.pattern();
-        private static final Pattern COMPARISON =
-                Pattern.compile("(" + OPERAND + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + OPERAND + ")");
+        private static final Pattern COMPARISON = Pattern.compile(
+                "(" + OPERAND + ")\\s*(" + Operator.SYMBOL.pattern() + ")\\s*(" + OPERAND + ")");
         private static final Pattern NEGATION = Pattern.compile("!\\s*(" + OPERAND + ")");
         private static final Pattern SINGLE_OPERAND = Pattern.compile(OPERAND);
 
@@ -221,7 +221,8 @@ sealed interface Condition
             String joined = CTokens.joinMinusSigns(text);
             Matcher comparison = COMPARISON.matcher(joined);
             if (comparison.matches()) {
-                return new Compare(text, comparison.group(1), comparison.group(2), comparison.group(3));
+                Operator sign = Operator.fromSymbol(comparison.group(2)).orElseThrow();
+                return new Compare(text, comparison.group(1), sign, comparison.group(3));
             }
             Matcher negation = NEGATION.matcher(joined);
             if (negation.matches()) {

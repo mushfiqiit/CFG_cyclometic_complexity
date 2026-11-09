@@ -149,7 +149,7 @@ final class TestCaseGenerator {
                 .forEach(variable -> names.add(variable.name()));
         for (ConditionSite site : sites) {
             for (String operand : site.condition().operands()) {
-                if (Comparison.isVariable(operand) && !declared.containsKey(operand)) {
+                if (CTokens.isIdentifier(operand) && !declared.containsKey(operand)) {
                     names.add(operand);
                 }
             }

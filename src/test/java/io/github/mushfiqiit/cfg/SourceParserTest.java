@@ -201,6 +201,25 @@ class SourceParserTest {
     }
 
     @Test
+    void indentedHashLinesArePreambleForTheParserAndTheChecker() {
+        ParsedSource source = ParsedSource.of(List.of("  #include <stdio.h>", "", "int main(void) {", "    a = 1;", "}"));
+
+        assertEquals(3, source.requireFunction().header().number());
+        assertTrue(SourceFormatChecker.check(source).isEmpty());
+        assertEquals(2, ControlFlowGraph.of(source).entry());
+    }
+
+    @Test
+    void skipLinesStopsAtTheFirstLineNotSkipped() {
+        List<String> lines = List.of("", "  ", "a;", "", "b;");
+
+        assertEquals(2, SourceParser.skipLines(lines, 0, String::isBlank));
+        assertEquals(2, SourceParser.skipLines(lines, 2, String::isBlank));
+        assertEquals(4, SourceParser.skipLines(lines, 3, String::isBlank));
+        assertEquals(5, SourceParser.skipLines(lines, 0, line -> true));
+    }
+
+    @Test
     void fileWithoutCodeHasNoFunction() {
         assertTrue(ParsedSource.of(List.of("#include <stdio.h>", "", "// comment")).function().isEmpty());
         assertTrue(SourceParser.parse(List.of()).isEmpty());

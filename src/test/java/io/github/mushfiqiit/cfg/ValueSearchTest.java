@@ -14,6 +14,11 @@ import org.junit.jupiter.api.Test;
 /** Checks that the search finds the simplest values, and reports when there are none. */
 class ValueSearchTest {
 
+    /** Reads a comparison such as {@code a > b} from its parts. */
+    private static Comparison comparison(String left, String symbol, String right) {
+        return Comparison.of(left, Operator.fromSymbol(symbol).orElseThrow(), right).orElseThrow();
+    }
+
     private static Map<Comparison, Boolean> require(Object... comparisonsAndOutcomes) {
         Map<Comparison, Boolean> constraints = new LinkedHashMap<>();
         for (int i = 0; i < comparisonsAndOutcomes.length; i += 2) {
@@ -32,7 +37,7 @@ class ValueSearchTest {
 
     @Test
     void prefersTheSimplestValues() {
-        Result result = ValueSearch.search(require(new Comparison("a", ">", "b"), true), List.of("a", "b"), zeros("a", "b"));
+        Result result = ValueSearch.search(require(comparison("a", ">", "b"), true), List.of("a", "b"), zeros("a", "b"));
 
         assertEquals(Status.FOUND, result.status());
         assertEquals(Map.of("a", 1, "b", 0), result.values().orElseThrow());
@@ -40,7 +45,7 @@ class ValueSearchTest {
 
     @Test
     void triesTheNeighboursOfEachConstant() {
-        Result result = ValueSearch.search(require(new Comparison("a", ">", "2"), true), List.of("a"), zeros("a"));
+        Result result = ValueSearch.search(require(comparison("a", ">", "2"), true), List.of("a"), zeros("a"));
 
         assertEquals(Map.of("a", 3), result.values().orElseThrow());
     }
@@ -50,7 +55,7 @@ class ValueSearchTest {
         Map<String, Integer> start = zeros("y");
         start.put("x", 5);
 
-        Result result = ValueSearch.search(require(new Comparison("x", ">", "y"), false), List.of("y"), start);
+        Result result = ValueSearch.search(require(comparison("x", ">", "y"), false), List.of("y"), start);
 
         assertEquals(Map.of("x", 5, "y", 5), result.values().orElseThrow());
     }
@@ -58,7 +63,7 @@ class ValueSearchTest {
     @Test
     void reportsWhenNoValuesWork() {
         Result result = ValueSearch.search(
-                require(new Comparison("a", ">", "b"), true, new Comparison("b", ">", "a"), true),
+                require(comparison("a", ">", "b"), true, comparison("b", ">", "a"), true),
                 List.of("a", "b"), zeros("a", "b"));
 
         assertEquals(new Result(Status.NO_SOLUTION, Optional.empty()), result);
@@ -69,7 +74,7 @@ class ValueSearchTest {
         String[] names = {"a", "b", "c", "d", "e", "f", "g", "h", "i"};
         Map<Comparison, Boolean> constraints = new LinkedHashMap<>();
         for (int i = 0; i + 1 < names.length; i++) {
-            constraints.put(new Comparison(names[i], "<", names[i + 1]), true);
+            constraints.put(comparison(names[i], "<", names[i + 1]), true);
         }
 
         Result result = ValueSearch.search(constraints, List.of(names), zeros(names));
@@ -79,21 +84,21 @@ class ValueSearchTest {
 
     @Test
     void succeedsWithoutFreeVariablesWhenTheConstraintsAlreadyHold() {
-        Result result = ValueSearch.search(require(new Comparison("x", "==", "5"), true), List.of(), Map.of("x", 5));
+        Result result = ValueSearch.search(require(comparison("x", "==", "5"), true), List.of(), Map.of("x", 5));
 
         assertEquals(Map.of("x", 5), result.values().orElseThrow());
     }
 
     @Test
     void neighboursOfTheLargestIntDoNotWrapAround() {
-        Result result = ValueSearch.search(require(new Comparison("a", "<", "2147483647"), true), List.of("a"), zeros("a"));
+        Result result = ValueSearch.search(require(comparison("a", "<", "2147483647"), true), List.of("a"), zeros("a"));
 
         assertEquals(Map.of("a", 0), result.values().orElseThrow());
     }
 
     @Test
     void variablesNeedAStartingValueUnlessTheSearchSetsThem() {
-        Map<Comparison, Boolean> constraints = require(new Comparison("a", ">", "b"), true);
+        Map<Comparison, Boolean> constraints = require(comparison("a", ">", "b"), true);
 
         assertEquals(Status.FOUND, ValueSearch.search(constraints, List.of("a", "b"), Map.of()).status());
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,

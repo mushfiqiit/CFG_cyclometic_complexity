@@ -1,5 +1,7 @@
 package io.github.mushfiqiit.cfg;
 
+import java.math.BigInteger;
+import java.util.OptionalInt;
 import java.util.regex.Pattern;
 
 /**
@@ -30,8 +32,34 @@ final class CTokens {
 
     private static final Pattern SPACED_MINUS = Pattern.compile("-\\s+(?=\\d)");
 
-    /** Prevents instantiation; this class only holds patterns. */
+    /** Prevents instantiation; this class only holds patterns and helpers that use them. */
     private CTokens() {
+    }
+
+    /**
+     * Tells whether text is a variable or function name.
+     *
+     * @param text the text to check
+     * @return true for a name such as {@code k} or {@code count_2}
+     */
+    static boolean isIdentifier(String text) {
+        return IDENTIFIER.matcher(text).matches();
+    }
+
+    /**
+     * Reads an integer that fits in an {@code int}. Larger numbers are not read, so they never
+     * cause an exception.
+     *
+     * @param text the text to read
+     * @return the integer, or an empty value if the text is not a whole number or does not fit
+     *         in an {@code int}
+     */
+    static OptionalInt parseInteger(String text) {
+        if (!INTEGER.matcher(text).matches()) {
+            return OptionalInt.empty();
+        }
+        BigInteger value = new BigInteger(text);
+        return value.bitLength() < Integer.SIZE ? OptionalInt.of(value.intValue()) : OptionalInt.empty();
     }
 
     /**

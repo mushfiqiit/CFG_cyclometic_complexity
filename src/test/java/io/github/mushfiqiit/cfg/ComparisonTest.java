@@ -1,10 +1,10 @@
 package io.github.mushfiqiit.cfg;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.mushfiqiit.cfg.Operand.Constant;
+import io.github.mushfiqiit.cfg.Operand.Variable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,6 +20,10 @@ class ComparisonTest {
         return Condition.from(line).toComparison();
     }
 
+    private static Comparison comparison(String left, Operator operator, String right) {
+        return Comparison.of(left, operator, right).orElseThrow();
+    }
+
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
         "while(k>0){          | k  | >  | 0",
@@ -28,8 +32,10 @@ class ComparisonTest {
         "if (z != -3) {       | z  | != | -3",
         "if (a) {             | a  | != | 0",
         "if (!a) {            | a  | == | 0"})
-    void simpleConditionsBecomeComparisons(String line, String left, String operator, String right) {
-        assertEquals(Optional.of(new Comparison(left, operator, right)), comparisonOf(line));
+    void simpleConditionsBecomeComparisons(String line, String left, String symbol, String right) {
+        Operator operator = Operator.fromSymbol(symbol).orElseThrow();
+
+        assertEquals(Optional.of(comparison(left, operator, right)), comparisonOf(line));
     }
 
     @ParameterizedTest
@@ -40,42 +46,50 @@ class ComparisonTest {
     }
 
     @Test
+    void operandsAreReadOnceIntoVariablesAndConstants() {
+        assertEquals(new Comparison(new Variable("a"), Operator.LESS, new Constant(-10)),
+                comparison("a", Operator.LESS, "-10"));
+    }
+
+    @Test
     void listsItsVariablesAndConstants() {
-        Comparison comparison = new Comparison("a", "<", "10");
+        Comparison comparison = comparison("a", Operator.LESS, "10");
 
         assertEquals(List.of("a"), comparison.variables());
         assertEquals(List.of(10), comparison.constants());
-        assertEquals(List.of("a", "b"), new Comparison("a", ">", "b").variables());
+        assertEquals(List.of("a", "b"), comparison("a", Operator.GREATER, "b").variables());
+        assertEquals(List.of(1, 2), comparison("1", Operator.GREATER, "2").constants());
     }
 
     @ParameterizedTest
     @CsvSource({"<, 1, 2, true", "<, 2, 2, false", "<=, 2, 2, true", ">, 3, 2, true", ">=, 1, 2, false",
             "==, 2, 2, true", "!=, 2, 2, false"})
-    void evaluatesEveryOperator(String operator, int a, int b, boolean expected) {
-        assertEquals(expected, new Comparison("a", operator, "b").holds(Map.of("a", a, "b", b)));
+    void evaluatesEveryOperator(String symbol, int a, int b, boolean expected) {
+        Operator operator = Operator.fromSymbol(symbol).orElseThrow();
+
+        assertEquals(expected, comparison("a", operator, "b").holds(Map.of("a", a, "b", b)));
     }
 
-    @Test
-    void recognizesVariablesAndIntegers() {
-        assertTrue(Comparison.isVariable("count_2"));
-        assertFalse(Comparison.isVariable("2count"));
-        assertTrue(Comparison.isInteger("-5"));
-        assertFalse(Comparison.isInteger("5a"));
+    @ParameterizedTest
+    @ValueSource(strings = {"2count", "5a", "a b", "", "- 5"})
+    void textThatIsNeitherAVariableNorAnIntegerIsNotAnOperand(String text) {
+        assertEquals(Optional.empty(), Operand.parse(text));
+        assertEquals(Optional.empty(), Comparison.of(text, Operator.LESS, "1"));
     }
 
     @Test
     void integersMustFitInAnInt() {
-        assertEquals(java.util.OptionalInt.of(2147483647), Comparison.parseInteger("2147483647"));
-        assertEquals(java.util.OptionalInt.of(-2147483648), Comparison.parseInteger("-2147483648"));
-        assertEquals(java.util.OptionalInt.of(7), Comparison.parseInteger("0007"));
-        assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("2147483648"));
-        assertEquals(java.util.OptionalInt.empty(), Comparison.parseInteger("99999999999999999999"));
+        assertEquals(Optional.of(new Constant(2147483647)), Operand.parse("2147483647"));
+        assertEquals(Optional.of(new Constant(-2147483648)), Operand.parse("-2147483648"));
+        assertEquals(Optional.of(new Constant(7)), Operand.parse("0007"));
+        assertEquals(Optional.empty(), Operand.parse("2147483648"));
+        assertEquals(Optional.empty(), Operand.parse("99999999999999999999"));
         assertEquals(Optional.empty(), comparisonOf("if (a > 99999999999) {"));
     }
 
     @Test
     void evaluatingWithoutAVariablesValueIsRejected() {
-        Comparison comparison = new Comparison("a", ">", "b");
+        Comparison comparison = comparison("a", Operator.GREATER, "b");
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> comparison.holds(Map.of("a", 1)));

@@ -55,11 +55,12 @@ final class SourceFormatChecker {
      */
     static List<Problem> check(ParsedSource source) {
         List<String> code = source.lines();
-        int functionLine = firstCodeLine(code);
-        if (functionLine < 0) {
+        if (source.function().isEmpty()) {
             return List.of(new Problem(Math.max(code.size(), 1),
                     "there is no code to analyze; the file needs a function such as \"int main(void) {\""));
         }
+        Function function = source.function().orElseThrow();
+        int functionLine = function.header().index();
         String header = CLiterals.blankOut(code.get(functionLine).strip());
         if (!isFunctionHeader(header)) {
             return List.of(new Problem(functionLine + 1,
@@ -72,25 +73,9 @@ final class SourceFormatChecker {
             checkLine(code.get(index).strip(), index + 1, problems);
         }
         if (problems.isEmpty()) {
-            source.function().ifPresent(function -> checkStructure(code, function, problems));
+            checkStructure(code, function, problems);
         }
         return problems;
-    }
-
-    /**
-     * Finds the first line that is neither blank nor a {@code #} line.
-     *
-     * @param code the source lines with comments removed
-     * @return the line's index, or -1 if there is none
-     */
-    private static int firstCodeLine(List<String> code) {
-        for (int index = 0; index < code.size(); index++) {
-            String line = code.get(index).strip();
-            if (!line.isEmpty() && !line.startsWith("#")) {
-                return index;
-            }
-        }
-        return -1;
     }
 
     /**
@@ -196,12 +181,8 @@ final class SourceFormatChecker {
      * @return the line, or an empty value if only blank lines follow
      */
     private static Optional<Line> firstLineAfter(List<String> code, Line end) {
-        for (int index = end.index() + 1; index < code.size(); index++) {
-            if (!code.get(index).isBlank()) {
-                return Optional.of(new Line(index, code.get(index)));
-            }
-        }
-        return Optional.empty();
+        int index = SourceParser.skipLines(code, end.index() + 1, String::isBlank);
+        return index < code.size() ? Optional.of(new Line(index, code.get(index))) : Optional.empty();
     }
 
     /**
