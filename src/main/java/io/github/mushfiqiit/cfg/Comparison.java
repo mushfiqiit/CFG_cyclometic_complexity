@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * A condition that can be evaluated: two operands, each a variable or an integer, compared with
@@ -20,8 +19,6 @@ import java.util.regex.Pattern;
  */
 record Comparison(String left, String operator, String right) {
 
-    private static final Pattern VARIABLE = Pattern.compile("[A-Za-z_]\\w*");
-    private static final Pattern INTEGER = Pattern.compile("-?\\d+");
     private static final Set<String> OPERATORS = Set.of("<", "<=", ">", ">=", "==", "!=");
 
     // ***************************************************************************
@@ -49,7 +46,7 @@ record Comparison(String left, String operator, String right) {
      * @return true for a name such as {@code k} or {@code count_2}
      */
     static boolean isVariable(String operand) {
-        return VARIABLE.matcher(operand).matches();
+        return CTokens.IDENTIFIER.matcher(operand).matches();
     }
 
     /**
@@ -71,7 +68,7 @@ record Comparison(String left, String operator, String right) {
      *         in an {@code int}
      */
     static OptionalInt parseInteger(String text) {
-        if (!INTEGER.matcher(text).matches()) {
+        if (!CTokens.INTEGER.matcher(text).matches()) {
             return OptionalInt.empty();
         }
         BigInteger value = new BigInteger(text);

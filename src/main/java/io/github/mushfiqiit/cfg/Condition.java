@@ -197,8 +197,8 @@ sealed interface Condition
     /** Reads conditions from source lines, keeping its patterns out of the interface. */
     final class Reader {
 
-        /** A variable name or an integer; a minus sign may be followed by spaces, as in {@code - 5}. */
-        private static final String OPERAND = "[A-Za-z_]\\w*|-?\\s*\\d+";
+        /** A variable name or an integer. */
+        private static final String OPERAND = CTokens.IDENTIFIER.pattern() + "|" + CTokens.INTEGER.pattern();
         private static final Pattern COMPARISON =
                 Pattern.compile("(" + OPERAND + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + OPERAND + ")");
         private static final Pattern NEGATION = Pattern.compile("!\\s*(" + OPERAND + ")");
@@ -209,36 +209,28 @@ sealed interface Condition
         }
 
         /**
-         * Reads the condition between the parentheses of a line.
+         * Reads the condition between the parentheses of a line. The condition keeps its text as
+         * written; the operands are read from a copy where each minus sign is joined to its
+         * number, so {@code a < - 5} has the operands {@code a} and {@code -5}.
          *
          * @param line an {@code if}, {@code else if} or {@code while} line
          * @return the condition, of the kind its form matches
          */
         private static Condition read(String line) {
             String text = textBetweenParentheses(line);
-            Matcher comparison = COMPARISON.matcher(text);
+            String joined = CTokens.joinMinusSigns(text);
+            Matcher comparison = COMPARISON.matcher(joined);
             if (comparison.matches()) {
-                return new Compare(text, compact(comparison.group(1)), comparison.group(2),
-                        compact(comparison.group(3)));
+                return new Compare(text, comparison.group(1), comparison.group(2), comparison.group(3));
             }
-            Matcher negation = NEGATION.matcher(text);
+            Matcher negation = NEGATION.matcher(joined);
             if (negation.matches()) {
-                return new Negation(text, compact(negation.group(1)));
+                return new Negation(text, negation.group(1));
             }
-            if (SINGLE_OPERAND.matcher(text).matches()) {
-                return new Truthy(text, compact(text));
+            if (SINGLE_OPERAND.matcher(joined).matches()) {
+                return new Truthy(text, joined);
             }
             return new Unsolvable(text);
-        }
-
-        /**
-         * Removes the spaces an operand may contain, so {@code - 5} becomes {@code -5}.
-         *
-         * @param operand the operand as written
-         * @return the operand without whitespace
-         */
-        private static String compact(String operand) {
-            return operand.replaceAll("\\s", "");
         }
 
         /**

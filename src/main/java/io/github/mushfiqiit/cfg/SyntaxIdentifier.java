@@ -8,7 +8,6 @@ public final class SyntaxIdentifier {
     private static final Pattern WHITESPACE = Pattern.compile("\\s");
     private static final Pattern ELSE_KEYWORD = Pattern.compile("^\\s*else\\b");
     private static final Pattern INT_KEYWORD = Pattern.compile("^\\s*int\\s");
-    private static final Pattern FUNCTION_HEADER = Pattern.compile("^\\s*int\\s+\\**\\s*[A-Za-z_]\\w*\\s*\\(");
 
     /** Prevents instantiation; this class only has static methods. */
     private SyntaxIdentifier() {
@@ -97,7 +96,7 @@ public final class SyntaxIdentifier {
      * @return true if the line starts with the keyword {@code int} and does not declare a function
      */
     public static boolean isIntDeclaration(String statement) {
-        return INT_KEYWORD.matcher(statement).find() && !FUNCTION_HEADER.matcher(statement).find();
+        return INT_KEYWORD.matcher(statement).find() && !CTokens.startsFunctionHeader(statement);
     }
 
     /**

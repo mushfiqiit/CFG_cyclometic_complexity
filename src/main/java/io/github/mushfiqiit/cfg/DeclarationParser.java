@@ -10,15 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Finds the {@code int} variables a function declares, in {@code int} declarations and in
  * {@code for} loop initializers, and where each one's value comes from.
  */
 final class DeclarationParser {
-
-    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_]\\w*");
 
     private final Map<String, DeclaredVariable> variables = new LinkedHashMap<>();
 
@@ -152,7 +149,7 @@ final class DeclarationParser {
      */
     private static String declaredName(String declarator) {
         String target = declarator.split("=", 2)[0].strip().replaceFirst("^\\*+\\s*", "");
-        Matcher name = IDENTIFIER.matcher(target);
+        Matcher name = CTokens.IDENTIFIER.matcher(target);
         return name.lookingAt() ? name.group() : "";
     }
 }

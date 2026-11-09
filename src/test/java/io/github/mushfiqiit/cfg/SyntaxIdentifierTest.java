@@ -55,7 +55,7 @@ class SyntaxIdentifierTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"int main(void) {", "\tint main(){", "int f(int x);", "integer z;", "printf(\"int\");", "a = 1;"})
+    @ValueSource(strings = {"int main(void) {", "\tint main(){", "int f(int x);", "int const *f(void);", "int *g(void);", "integer z;", "printf(\"int\");", "a = 1;"})
     void functionHeadersAndOtherLinesAreNotIntDeclarations(String line) {
         assertFalse(SyntaxIdentifier.isIntDeclaration(line));
     }

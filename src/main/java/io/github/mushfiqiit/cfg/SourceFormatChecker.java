@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * Checks that C source code uses the layout the analyses understand, so that a file they would
@@ -37,9 +36,6 @@ final class SourceFormatChecker {
             return "line " + lineNumber + ": " + message;
         }
     }
-
-    /** A return type, then a name followed by "(", as in "int main(" or "static char *name(". */
-    private static final Pattern FUNCTION_HEADER = Pattern.compile("[A-Za-z_][\\w\\s*]*[\\s*][A-Za-z_]\\w*\\s*\\(");
 
     /** Prevents instantiation; this class only has static methods. */
     private SourceFormatChecker() {
@@ -105,7 +101,7 @@ final class SourceFormatChecker {
      *         <code>{</code>
      */
     private static boolean isFunctionHeader(String line) {
-        return FUNCTION_HEADER.matcher(line).lookingAt() && line.endsWith("{") && count(line, '{') == 1
+        return CTokens.startsFunctionHeader(line) && line.endsWith("{") && count(line, '{') == 1
                 && count(line, '}') == 0 && !isControlHeader(line);
     }
 
