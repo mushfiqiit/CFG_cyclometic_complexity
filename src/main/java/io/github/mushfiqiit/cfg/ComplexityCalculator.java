@@ -35,7 +35,7 @@ public final class ComplexityCalculator {
         for (Statement statement : statements) {
             if (statement instanceof IfChain chain) {
                 for (Branch branch : chain.branches()) {
-                    total = total.plus(decisionAt(branch.header().text())).plus(count(branch.body().statements()));
+                    total = total.plus(decisionAt(branch.kind())).plus(count(branch.body().statements()));
                 }
             } else if (statement instanceof Loop loop) {
                 total = total.plus(new DecisionCounts(0, 0, 1)).plus(count(loop.body().statements()));
@@ -47,13 +47,14 @@ public final class ComplexityCalculator {
     /**
      * Counts the decision point an {@code if} chain branch opens.
      *
-     * @param header the branch's {@code if}, {@code else if} or {@code else} line
+     * @param kind the branch's kind
      * @return one {@code if}, one {@code else if}, or nothing for a plain {@code else}
      */
-    private static DecisionCounts decisionAt(String header) {
-        if (SyntaxIdentifier.isElseIf(header)) {
-            return new DecisionCounts(0, 1, 0);
-        }
-        return SyntaxIdentifier.isIf(header) ? new DecisionCounts(1, 0, 0) : DecisionCounts.NONE;
+    private static DecisionCounts decisionAt(Branch.Kind kind) {
+        return switch (kind) {
+            case IF -> new DecisionCounts(1, 0, 0);
+            case ELSE_IF -> new DecisionCounts(0, 1, 0);
+            case ELSE -> DecisionCounts.NONE;
+        };
     }
 }

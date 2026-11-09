@@ -91,7 +91,8 @@ final class SourceParser {
             } else if (SyntaxIdentifier.isIf(text) || SyntaxIdentifier.isElse(text)) {
                 statements.add(readIfChain());
             } else if (SyntaxIdentifier.isLoop(text)) {
-                statements.add(new Loop(takeLine(), readBlock()));
+                Line header = takeLine();
+                statements.add(new Loop(loopKind(header.text()), header, readBlock()));
             } else {
                 statements.add(new Simple(takeLine()));
             }
@@ -107,15 +108,50 @@ final class SourceParser {
      */
     private IfChain readIfChain() {
         List<Branch> branches = new ArrayList<>();
-        Line header = takeLine();
-        branches.add(new Branch(header, readBlock()));
-        boolean canContinue = true;
-        while (canContinue && nextNonBlankLineIsElse()) {
-            header = takeLine();
-            branches.add(new Branch(header, readBlock()));
-            canContinue = SyntaxIdentifier.isElseIf(header.text());
+        branches.add(readBranch());
+        while (branches.get(branches.size() - 1).kind() != Branch.Kind.ELSE && nextNonBlankLineIsElse()) {
+            branches.add(readBranch());
         }
         return new IfChain(branches);
+    }
+
+    /**
+     * Reads one branch of an {@code if} chain: its header line and its block.
+     *
+     * @return the branch
+     */
+    private Branch readBranch() {
+        Line header = takeLine();
+        return new Branch(branchKind(header.text()), header, readBlock());
+    }
+
+    // ***************************************************************************
+    // Telling keywords apart
+    // ***************************************************************************
+
+    /**
+     * Tells which kind of branch a line opens.
+     *
+     * @param header an {@code if}, {@code else if} or {@code else} line
+     * @return {@link Branch.Kind#ELSE_IF} or {@link Branch.Kind#ELSE} if the line starts with
+     *     {@code else}, otherwise {@link Branch.Kind#IF}
+     */
+    static Branch.Kind branchKind(String header) {
+        if (SyntaxIdentifier.isElseIf(header)) {
+            return Branch.Kind.ELSE_IF;
+        }
+        return SyntaxIdentifier.isElse(header) ? Branch.Kind.ELSE : Branch.Kind.IF;
+    }
+
+    /**
+     * Tells which kind of loop a line opens.
+     *
+     * @param header a {@code for} or {@code while} line
+     * @return {@link Loop.Kind#FOR} if the line starts with {@code for}, otherwise
+     *     {@link Loop.Kind#WHILE}
+     */
+    static Loop.Kind loopKind(String header) {
+        return SyntaxIdentifier.isFor(header) ? Loop.Kind.FOR : Loop.Kind.WHILE;
     }
 
     // ***************************************************************************

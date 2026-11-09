@@ -69,7 +69,7 @@ public final class VariableConditionAnalysis {
             if (statement instanceof Simple simple && SyntaxIdentifier.isIntDeclaration(simple.line().text())) {
                 parseDeclaration(simple.line().text(), false);
             } else if (statement instanceof Loop loop) {
-                if (SyntaxIdentifier.isFor(loop.header().text())) {
+                if (loop.kind() == Loop.Kind.FOR) {
                     parseForInitializer(loop.header().text());
                 }
                 collectDeclarations(loop.body().statements());

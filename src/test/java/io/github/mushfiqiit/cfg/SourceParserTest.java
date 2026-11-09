@@ -117,6 +117,38 @@ class SourceParserTest {
     }
 
     @Test
+    void branchesAndLoopsRecordTheirKeyword() {
+        Function function = parse(List.of(
+                "int main(void) {",
+                "    if (a > 0) {",
+                "    }",
+                "    else if (a < 0) {",
+                "    }",
+                "    else {",
+                "    }",
+                "    for (i = 0; i < 3; i++) {",
+                "    }",
+                "    while (b != 0) {",
+                "    }",
+                "}"));
+        List<Statement> statements = function.body().statements();
+
+        IfChain chain = (IfChain) statements.get(0);
+        assertEquals(List.of(Branch.Kind.IF, Branch.Kind.ELSE_IF, Branch.Kind.ELSE),
+                chain.branches().stream().map(Branch::kind).toList());
+        assertEquals(Loop.Kind.FOR, ((Loop) statements.get(1)).kind());
+        assertEquals(Loop.Kind.WHILE, ((Loop) statements.get(2)).kind());
+    }
+
+    @Test
+    void elseWithoutIfIsRecordedAsElse() {
+        Function function = parse(List.of("int main(void) {", "    else {", "    }", "}"));
+
+        IfChain chain = (IfChain) function.body().statements().get(0);
+        assertEquals(Branch.Kind.ELSE, chain.branches().get(0).kind());
+    }
+
+    @Test
     void fileThatEndsEarlyLeavesBlocksUnclosed() {
         assertEquals(List.of(
                 "function 1",

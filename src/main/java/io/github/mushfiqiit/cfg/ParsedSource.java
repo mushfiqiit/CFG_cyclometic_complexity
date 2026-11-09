@@ -63,10 +63,11 @@ record ParsedSource(List<String> lines, Optional<Function> function) {
         Function code = function.orElseThrow();
         String header = code.header().text();
         if (SyntaxIdentifier.isLoop(header)) {
-            return List.of(new Loop(code.header(), code.body()));
+            return List.of(new Loop(SourceParser.loopKind(header), code.header(), code.body()));
         }
         if (SyntaxIdentifier.isIf(header) || SyntaxIdentifier.isElse(header)) {
-            return List.of(new IfChain(List.of(new Branch(code.header(), code.body()))));
+            Branch branch = new Branch(SourceParser.branchKind(header), code.header(), code.body());
+            return List.of(new IfChain(List.of(branch)));
         }
         if (header.strip().endsWith("{")) {
             return code.body().statements();

@@ -95,18 +95,47 @@ final class SourceTree {
     /**
      * One branch of an {@code if} chain.
      *
+     * @param kind whether the branch is an {@code if}, an {@code else if} or an {@code else}
      * @param header the {@code if}, {@code else if} or {@code else} line
      * @param body the branch's block
      */
-    record Branch(Line header, Block body) {
+    record Branch(Kind kind, Line header, Block body) {
+
+        /** The keyword that opens a branch. */
+        enum Kind {
+            /** An {@code if} line. */
+            IF,
+            /** An {@code else if} line. */
+            ELSE_IF,
+            /** An {@code else} line. */
+            ELSE;
+
+            /**
+             * Tells whether a branch of this kind tests a condition.
+             *
+             * @return {@code true} for {@code if} and {@code else if}, {@code false} for {@code else}
+             */
+            boolean hasCondition() {
+                return this != ELSE;
+            }
+        }
     }
 
     /**
      * A {@code for} or {@code while} loop.
      *
+     * @param kind whether the loop is a {@code for} or a {@code while}
      * @param header the loop's line
      * @param body the loop's block
      */
-    record Loop(Line header, Block body) implements Statement {
+    record Loop(Kind kind, Line header, Block body) implements Statement {
+
+        /** The keyword that opens a loop. */
+        enum Kind {
+            /** A {@code for} line. */
+            FOR,
+            /** A {@code while} line. */
+            WHILE
+        }
     }
 }

@@ -186,9 +186,9 @@ final class SourceFormatChecker {
     private static void findElsesWithoutIf(Block block, List<Problem> found) {
         for (Statement statement : block.statements()) {
             if (statement instanceof IfChain chain) {
-                Line first = chain.branches().get(0).header();
-                if (SyntaxIdentifier.isElse(first.text())) {
-                    found.add(new Problem(first.number(),
+                Branch first = chain.branches().get(0);
+                if (first.kind() != Branch.Kind.IF) {
+                    found.add(new Problem(first.header().number(),
                             "this else has no matching if; it must come right after the } that closes an if or else if"));
                 }
                 chain.branches().forEach(branch -> findElsesWithoutIf(branch.body(), found));

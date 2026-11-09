@@ -69,13 +69,11 @@ final class ConditionPaths {
     private static void walkIfChain(IfChain chain, List<Requirement> path, List<ConditionSite> sites) {
         List<Requirement> earlierFalse = List.of();
         for (Branch branch : chain.branches()) {
-            String header = branch.header().text();
-            boolean hasCondition = SyntaxIdentifier.isElseIf(header) || !SyntaxIdentifier.isElse(header);
-            if (!hasCondition) {
+            if (!branch.kind().hasCondition()) {
                 walk(branch.body().statements(), join(path, earlierFalse), sites);
                 return;
             }
-            Condition condition = Condition.from(header);
+            Condition condition = Condition.from(branch.header().text());
             sites.add(new ConditionSite(branch.header().number(), condition, join(path, earlierFalse)));
             walk(branch.body().statements(), join(path, join(earlierFalse, requirement(branch.header(), condition, true))),
                     sites);
@@ -92,7 +90,7 @@ final class ConditionPaths {
      * @param sites where to add the conditions found
      */
     private static void walkLoop(Loop loop, List<Requirement> path, List<ConditionSite> sites) {
-        if (!SyntaxIdentifier.isWhile(loop.header().text())) {
+        if (loop.kind() != Loop.Kind.WHILE) {
             walk(loop.body().statements(), path, sites);
             return;
         }

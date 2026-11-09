@@ -143,8 +143,7 @@ public final class ControlFlowGraphBuilder {
                 falseBranch.addChild(header);
             }
             exits.addAll(linkBlock(branch.body(), List.of(header)));
-            boolean isCondition = falseBranch == null || SyntaxIdentifier.isElseIf(branch.header().text());
-            falseBranch = isCondition ? header : null;
+            falseBranch = branch.kind().hasCondition() ? header : null;
         }
         if (falseBranch != null) {
             exits.add(falseBranch);
