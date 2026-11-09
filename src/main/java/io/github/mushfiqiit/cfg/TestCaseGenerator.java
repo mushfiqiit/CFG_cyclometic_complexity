@@ -2,6 +2,7 @@ package io.github.mushfiqiit.cfg;
 
 import io.github.mushfiqiit.cfg.ConditionSite.Requirement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,14 +27,84 @@ final class TestCaseGenerator {
      *
      * @param site the condition the test case covers
      * @param outcome whether the test case makes the condition true or false
-     * @param inputs the value of each input variable, in report order; empty if no values were
-     *        found
-     * @param reason why no values were found; empty when there are inputs
+     * @param result the input values found, or the reason there are none
      */
-    record TestCase(ConditionSite site, boolean outcome, Optional<Map<String, Integer>> inputs, String reason) {
+    record TestCase(ConditionSite site, boolean outcome, Result result) {
+
+        /**
+         * Returns the input values, if any were found.
+         *
+         * @return the value of each input variable in report order, or an empty value if none
+         *         were found
+         */
+        Optional<Map<String, Integer>> inputs() {
+            return result instanceof Found found ? Optional.of(found.inputs()) : Optional.empty();
+        }
     }
 
-    private static final String CONTRADICTION = "this outcome contradicts a condition on the way here";
+    /** What the search found for a test case: input values, or the reason there are none. */
+    sealed interface Result permits Found, NoValues {
+    }
+
+    /**
+     * Input values that make the test case reach its condition with the right outcome.
+     *
+     * @param inputs the value of each input variable, in report order; empty if the function
+     *        has no inputs
+     */
+    record Found(Map<String, Integer> inputs) implements Result {
+
+        /**
+         * Creates a result, keeping a read-only copy of the inputs in their order.
+         *
+         * @param inputs the value of each input variable, in report order
+         */
+        Found {
+            inputs = Collections.unmodifiableMap(new LinkedHashMap<>(inputs));
+        }
+    }
+
+    /**
+     * No values were found.
+     *
+     * @param reason why
+     */
+    record NoValues(Reason reason) implements Result {
+    }
+
+    /** Why no values could be found for a test case. */
+    sealed interface Reason permits ConditionTooComplex, EarlierConditionTooComplex, DependsOnComputedVariable,
+            Contradiction, TooManyCombinations {
+    }
+
+    /** The condition itself is too complex to solve. */
+    record ConditionTooComplex() implements Reason {
+    }
+
+    /**
+     * A condition on the way to this one is too complex to solve.
+     *
+     * @param lineNumber the line of that condition, counting from 1
+     */
+    record EarlierConditionTooComplex(int lineNumber) implements Reason {
+    }
+
+    /**
+     * A comparison on the way uses a variable whose value the code computes, so no test case can
+     * choose it.
+     *
+     * @param variable the variable's name
+     */
+    record DependsOnComputedVariable(String variable) implements Reason {
+    }
+
+    /** The outcome contradicts a condition on the way to it, so it cannot be reached. */
+    record Contradiction() implements Reason {
+    }
+
+    /** Too many variables are involved to search; no values were tried. */
+    record TooManyCombinations() implements Reason {
+    }
 
     /** Prevents instantiation; this class only has static methods. */
     private TestCaseGenerator() {
@@ -103,17 +174,17 @@ final class TestCaseGenerator {
             Optional<Comparison> solvable = requirement.condition().toComparison();
             if (solvable.isEmpty()) {
                 return noValues(site, outcome, requirement.lineNumber() == site.lineNumber()
-                        ? "the condition is too complex to solve"
-                        : "the condition on line " + requirement.lineNumber() + ", which leads here, is too complex to solve");
+                        ? new ConditionTooComplex()
+                        : new EarlierConditionTooComplex(requirement.lineNumber()));
             }
             Comparison comparison = solvable.orElseThrow();
             Optional<String> computed = computedVariable(comparison, declared);
             if (computed.isPresent()) {
-                return noValues(site, outcome, "depends on " + computed.orElseThrow() + ", which is computed in the code");
+                return noValues(site, outcome, new DependsOnComputedVariable(computed.orElseThrow()));
             }
             Boolean required = constraints.put(comparison, requirement.outcome());
             if (required != null && required != requirement.outcome()) {
-                return noValues(site, outcome, CONTRADICTION);
+                return noValues(site, outcome, new Contradiction());
             }
         }
         return search(site, outcome, constraints, inputs, declared);
@@ -156,10 +227,10 @@ final class TestCaseGenerator {
             case FOUND -> {
                 Map<String, Integer> chosen = new LinkedHashMap<>();
                 inputs.forEach(name -> chosen.put(name, result.values().orElseThrow().get(name)));
-                yield new TestCase(site, outcome, Optional.of(chosen), "");
+                yield new TestCase(site, outcome, new Found(chosen));
             }
-            case NO_SOLUTION -> noValues(site, outcome, CONTRADICTION);
-            case TOO_MANY_COMBINATIONS -> noValues(site, outcome, "too many variables to search; no values were tried");
+            case NO_SOLUTION -> noValues(site, outcome, new Contradiction());
+            case TOO_MANY_COMBINATIONS -> noValues(site, outcome, new TooManyCombinations());
         };
     }
 
@@ -186,7 +257,7 @@ final class TestCaseGenerator {
      * @param reason why no values were found
      * @return the test case
      */
-    private static TestCase noValues(ConditionSite site, boolean outcome, String reason) {
-        return new TestCase(site, outcome, Optional.empty(), reason);
+    private static TestCase noValues(ConditionSite site, boolean outcome, Reason reason) {
+        return new TestCase(site, outcome, new NoValues(reason));
     }
 }

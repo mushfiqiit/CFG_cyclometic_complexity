@@ -24,7 +24,7 @@ class GraphPrinterTest {
     @Test
     void entryPointShowsTheOneBasedLineAndStatement() {
         String output = print(out ->
-                new GraphPrinter(out).printEntryPoint(ControlFlowGraphBuilder.from(ParsedSource.of(sample)).root()));
+                new GraphPrinter(out).printEntryPoint(graph));
 
         assertEquals("Entry point: line 2: int main(){\n", output);
     }
@@ -68,7 +68,7 @@ class GraphPrinterTest {
     @Test
     void complexityShowsBothFormulasAndTheDecisionPoints() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(sample))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(sample))));
 
         assertEquals(String.join("\n",
                 "",
@@ -83,10 +83,9 @@ class GraphPrinterTest {
     @Test
     void graphFormulaCountsTheNodesInTheGraphNotTheLines() {
         List<String> lines = program("two-preamble-lines.c");
-        ControlFlowGraph graph = build(lines);
 
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(lines))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(lines))));
 
         // Four nodes (lines 3 to 6) and three edges between them; the two preamble lines are not nodes.
         assertTrue(output.contains("M = E - N + 2 = 3 - 4 + 2 = 1"), output);
@@ -101,7 +100,7 @@ class GraphPrinterTest {
     void warnsWhenTheTwoResultsDiffer() {
         DecisionCounts tooMany = new DecisionCounts(1, 2, 2);
 
-        String output = print(out -> new GraphPrinter(out).printComplexity(graph, tooMany));
+        String output = print(out -> new GraphPrinter(out).printComplexity(new ComplexityAnalysis(graph, tooMany)));
 
         assertTrue(output.contains("M = D + 1 = 5 + 1 = 6"), output);
         assertTrue(output.contains("  Warning: the two results differ, so the graph may not match the code.\n"), output);
@@ -110,7 +109,7 @@ class GraphPrinterTest {
     @Test
     void doesNotWarnWhenTheResultsAgree() {
         String output = print(out ->
-                new GraphPrinter(out).printComplexity(graph, ComplexityCalculator.countDecisions(ParsedSource.of(sample))));
+                new GraphPrinter(out).printComplexity(ComplexityAnalysis.of(ParsedSource.of(sample))));
 
         assertTrue(!output.contains("Warning"));
     }

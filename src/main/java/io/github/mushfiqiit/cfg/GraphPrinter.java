@@ -24,17 +24,33 @@ final class GraphPrinter {
     }
 
     // ***************************************************************************
+    // Printing the whole report
+    // ***************************************************************************
+
+    /**
+     * Prints the option 1 report: a title, the entry point, the graph and both complexity results.
+     *
+     * @param analysis the analysis to print
+     */
+    void printReport(ComplexityAnalysis analysis) {
+        ConsoleText.printTitle(out, "Cyclomatic Complexity");
+        printEntryPoint(analysis.graph());
+        printGraph(analysis.graph());
+        printComplexity(analysis);
+    }
+
+    // ***************************************************************************
     // Printing the entry point
     // ***************************************************************************
 
     /**
      * Prints the line the graph starts from.
      *
-     * @param root the graph's root node
+     * @param graph the graph
      */
-    void printEntryPoint(Node root) {
-        out.println("Entry point: line " + lineNumber(root.getNumber()) + ": "
-                + root.getStatement().strip());
+    void printEntryPoint(ControlFlowGraph graph) {
+        out.println("Entry point: line " + lineNumber(graph.entry()) + ": "
+                + graph.getStatement(graph.entry()).strip());
     }
 
     // ***************************************************************************
@@ -113,24 +129,22 @@ final class GraphPrinter {
      * and from the decision points as decisions + 1. For well-structured code the two agree; if
      * they do not, a warning is printed, because the graph cannot be trusted.
      *
-     * @param graph the graph to measure
-     * @param decisions the decision points counted in the source
+     * @param analysis the graph and the decision points to report
      */
-    void printComplexity(ControlFlowGraph graph, DecisionCounts decisions) {
-        int nodeCount = graph.countNodes();
-        int edgeCount = graph.countEdges();
-        int fromGraph = edgeCount - nodeCount + 2;
+    void printComplexity(ComplexityAnalysis analysis) {
+        ControlFlowGraph graph = analysis.graph();
+        DecisionCounts decisions = analysis.decisions();
 
         ConsoleText.printSection(out, "Cyclomatic complexity");
         out.printf("  From the graph:            M = E - N + 2 = %d - %d + 2 = %d%n",
-                edgeCount, nodeCount, fromGraph);
+                graph.countEdges(), graph.countNodes(), analysis.fromGraph());
         out.printf("  From the decision points:  M = D + 1 = %d + 1 = %d%n",
-                decisions.total(), decisions.complexity());
+                decisions.total(), analysis.fromDecisions());
         out.println("  Decision points: " + String.join(", ",
                 ConsoleText.count(decisions.ifs(), "if", "ifs"),
                 ConsoleText.count(decisions.elseIfs(), "else if", "else ifs"),
                 ConsoleText.count(decisions.loops(), "loop", "loops")));
-        if (fromGraph != decisions.complexity()) {
+        if (!analysis.resultsAgree()) {
             out.println();
             out.println("  Warning: the two results differ, so the graph may not match the code.");
             out.println("  Check that the file uses the supported layout described in the README.");

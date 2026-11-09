@@ -25,6 +25,7 @@ import java.util.TreeSet;
 public final class ControlFlowGraph {
 
     private final List<String> lines;
+    private final int entry;
     private final List<List<Integer>> successors;
     private final int[] levels;
     private final List<Integer> reachableNodes;
@@ -39,6 +40,7 @@ public final class ControlFlowGraph {
      */
     ControlFlowGraph(Node root, List<String> lines) {
         this.lines = List.copyOf(lines);
+        this.entry = root.getNumber();
         this.successors = collectSuccessors(root, lines.size());
         this.levels = measureLevels(root.getNumber());
 
@@ -170,6 +172,15 @@ public final class ControlFlowGraph {
     }
 
     /**
+     * Returns the line the graph starts from: the function's header.
+     *
+     * @return the entry line's node number
+     */
+    public int entry() {
+        return entry;
+    }
+
+    /**
      * Counts the nodes in the graph: the lines the root can reach, including the root itself.
      *
      * @return the number of nodes
@@ -185,6 +196,15 @@ public final class ControlFlowGraph {
      */
     public int countEdges() {
         return edgeCount;
+    }
+
+    /**
+     * Works out the cyclomatic complexity from the graph's shape, as {@code M = E - N + 2}.
+     *
+     * @return the number of edges minus the number of nodes, plus 2
+     */
+    public int cyclomaticComplexity() {
+        return countEdges() - countNodes() + 2;
     }
 
     /**

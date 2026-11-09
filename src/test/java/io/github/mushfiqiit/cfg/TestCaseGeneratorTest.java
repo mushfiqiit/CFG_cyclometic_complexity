@@ -25,11 +25,9 @@ class TestCaseGeneratorTest {
         return declared;
     }
 
-    /** Describes a test case as "true: a=1, b=0" or "false: no values: reason". */
+    /** Describes a test case as "true: a=1, b=0" or "false: no values: reason", using the report's wording. */
     private static String describe(TestCase testCase) {
-        return testCase.outcome() + ": " + testCase.inputs()
-                .map(values -> String.join(", ", values.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList()))
-                .orElse("no values: " + testCase.reason());
+        return testCase.outcome() + ": " + TestCaseReport.describe(testCase.result());
     }
 
     private static List<String> describeAll(List<TestCase> cases) {

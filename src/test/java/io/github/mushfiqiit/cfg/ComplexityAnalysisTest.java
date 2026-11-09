@@ -1,38 +1,43 @@
 package io.github.mushfiqiit.cfg;
 
-import static io.github.mushfiqiit.cfg.TestSupport.print;
 import static io.github.mushfiqiit.cfg.TestSupport.program;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Checks that option 1 prints its whole report before handing the graph over for display. */
+/** Checks the option 1 results, independently of how they are printed. */
 class ComplexityAnalysisTest {
 
     @Test
-    void printsTheReportThenHandsOverTheGraph() {
-        List<String> events = new ArrayList<>();
-        List<String> lines = program("sample.c");
+    void sampleProgramResults() {
+        ComplexityAnalysis analysis = ComplexityAnalysis.of(ParsedSource.of(program("sample.c")));
 
-        String output = print(out -> ComplexityAnalysis.run(ParsedSource.of(lines), out, graph -> {
-            out.flush();
-            events.add("shown " + graph.countNodes() + " nodes");
-        }));
+        assertEquals(16, analysis.graph().countNodes());
+        assertEquals(19, analysis.graph().countEdges());
+        assertEquals(1, analysis.graph().entry());
+        assertEquals(new DecisionCounts(1, 2, 1), analysis.decisions());
+        assertEquals(5, analysis.fromGraph());
+        assertEquals(5, analysis.fromDecisions());
+        assertTrue(analysis.resultsAgree());
+    }
 
-        assertEquals(List.of("shown 16 nodes"), events);
-        assertTrue(output.startsWith("\nCyclomatic Complexity\n"));
-        assertTrue(output.endsWith("Opening the graph window. Close it to exit.\n"));
+    @Test
+    void resultsDisagreeWhenTheCountsDoNotMatchTheGraph() {
+        ComplexityAnalysis sample = ComplexityAnalysis.of(ParsedSource.of(program("sample.c")));
+        ComplexityAnalysis mismatched = new ComplexityAnalysis(sample.graph(), new DecisionCounts(1, 2, 2));
+
+        assertEquals(6, mismatched.fromDecisions());
+        assertFalse(mismatched.resultsAgree());
     }
 
     @Test
     void sourceWithoutCodeIsRejected() {
         ParsedSource empty = ParsedSource.of(List.of("#include <stdio.h>", ""));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> print(out -> ComplexityAnalysis.run(empty, out, graph -> { })));
+        assertThrows(IllegalArgumentException.class, () -> ComplexityAnalysis.of(empty));
     }
 }

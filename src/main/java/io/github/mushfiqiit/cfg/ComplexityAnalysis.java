@@ -1,40 +1,51 @@
 package io.github.mushfiqiit.cfg;
 
-import java.io.PrintStream;
-import java.util.function.Consumer;
-
 /**
- * Runs the cyclomatic complexity option: builds the control flow graph, prints it and both
- * complexity results, then shows the graph.
+ * The result of the cyclomatic complexity option: the control flow graph and the decision points,
+ * which give the complexity in two independent ways. Printing is left to {@link GraphPrinter},
+ * so the result can be shown or checked in any other way too.
+ *
+ * @param graph the function's control flow graph
+ * @param decisions the decision points counted in the source
  */
-public final class ComplexityAnalysis {
+record ComplexityAnalysis(ControlFlowGraph graph, DecisionCounts decisions) {
 
-    /** Prevents instantiation; this class only has static methods. */
-    private ComplexityAnalysis() {
+    /**
+     * Builds the graph and counts the decision points of a source file.
+     *
+     * @param source the source to analyze
+     * @return the analysis
+     * @throws IllegalArgumentException if the source has no code
+     */
+    static ComplexityAnalysis of(ParsedSource source) {
+        ControlFlowGraph graph = ControlFlowGraphBuilder.from(source).build();
+        return new ComplexityAnalysis(graph, ComplexityCalculator.countDecisions(source));
     }
 
     /**
-     * Runs the analysis on a source file, prints the report, then hands the graph to
-     * {@code showGraph}. The program passes {@link GraphViewer#show(ControlFlowGraph)}, which
-     * opens a window and blocks until it is closed.
+     * Returns the complexity worked out from the graph.
      *
-     * @param source the source to analyze
-     * @param out where to print the report
-     * @param showGraph what to do with the finished graph
-     * @throws IllegalArgumentException if the source has no code
+     * @return {@code M = E - N + 2}
      */
-    static void run(ParsedSource source, PrintStream out, Consumer<ControlFlowGraph> showGraph) {
-        GraphPrinter printer = new GraphPrinter(out);
-        ConsoleText.printTitle(out, "Cyclomatic Complexity");
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(source);
-        printer.printEntryPoint(builder.root());
+    int fromGraph() {
+        return graph.cyclomaticComplexity();
+    }
 
-        ControlFlowGraph graph = builder.build();
-        printer.printGraph(graph);
-        printer.printComplexity(graph, ComplexityCalculator.countDecisions(source));
+    /**
+     * Returns the complexity worked out from the decision points.
+     *
+     * @return {@code M = D + 1}
+     */
+    int fromDecisions() {
+        return decisions.complexity();
+    }
 
-        out.println();
-        out.println("Opening the graph window. Close it to exit.");
-        showGraph.accept(graph);
+    /**
+     * Tells whether both ways give the same complexity, as they do for well-structured code.
+     *
+     * @return {@code true} if the graph and the decision points agree
+     */
+    boolean resultsAgree() {
+        return fromGraph() == fromDecisions();
     }
 }

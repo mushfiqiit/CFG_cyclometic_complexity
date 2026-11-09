@@ -56,11 +56,11 @@ class ComplexityAgreementTest {
                         testCase.outcome()));
                 if (testCase.inputs().isPresent()) {
                     withValues++;
-                    assertTrue(allHold(required, testCase.inputs().get()),
+                    assertTrue(allHold(required, testCase.inputs().orElseThrow()),
                             () -> "values do not reach " + testCase.site().describe() + " in:\n" + String.join("\n", lines));
                 } else {
                     contradictions++;
-                    assertEquals("this outcome contradicts a condition on the way here", testCase.reason());
+                    assertEquals(new TestCaseGenerator.NoValues(new TestCaseGenerator.Contradiction()), testCase.result());
                     assertTrue(noValuesInRangeWork(required),
                             () -> "a reachable outcome was reported as impossible: " + testCase.site().describe()
                                     + " " + testCase.outcome() + " in:\n" + String.join("\n", lines));

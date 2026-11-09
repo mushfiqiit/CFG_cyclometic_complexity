@@ -89,9 +89,26 @@ public final class Main {
             return EXIT_INPUT_ERROR;
         }
         switch (choice.orElseThrow()) {
-            case COMPLEXITY -> ComplexityAnalysis.run(source, out, showGraph);
-            case TEST_CASES -> VariableConditionAnalysis.run(source, out);
+            case COMPLEXITY -> reportComplexity(ComplexityAnalysis.of(source), out, showGraph);
+            case TEST_CASES -> new TestCaseReport(out).print(VariableConditionAnalysis.of(source));
         }
         return EXIT_SUCCESS;
+    }
+
+    /**
+     * Prints the option 1 report, then hands the graph to {@code showGraph}. The program passes
+     * {@link GraphViewer#show(ControlFlowGraph)}, which opens a window and blocks until it is
+     * closed.
+     *
+     * @param analysis the finished analysis
+     * @param out where to print the report
+     * @param showGraph what to do with the graph once the report is printed
+     */
+    private static void reportComplexity(ComplexityAnalysis analysis, PrintStream out,
+            Consumer<ControlFlowGraph> showGraph) {
+        new GraphPrinter(out).printReport(analysis);
+        out.println();
+        out.println("Opening the graph window. Close it to exit.");
+        showGraph.accept(analysis.graph());
     }
 }
