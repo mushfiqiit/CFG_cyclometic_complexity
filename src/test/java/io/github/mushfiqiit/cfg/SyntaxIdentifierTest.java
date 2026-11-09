@@ -71,10 +71,4 @@ class SyntaxIdentifierTest {
         assertFalse(SyntaxIdentifier.endsBlock("   "));
         assertFalse(SyntaxIdentifier.endsBlock(""));
     }
-
-    @ParameterizedTest
-    @CsvSource({"<, true", ">, true", "=, true", "!, true", "a, false", "+, false"})
-    void recognizesComparisonCharacters(char character, boolean expected) {
-        assertEquals(expected, SyntaxIdentifier.isComparisonSign(character));
-    }
 }

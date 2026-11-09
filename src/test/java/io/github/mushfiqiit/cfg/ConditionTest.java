@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedTest;
 
 /** Pins down how conditions are parsed from {@code if}, {@code else if} and {@code while} lines. */
 class ConditionTest {
@@ -45,12 +47,26 @@ class ConditionTest {
         assertTrue(condition.getOperands().isEmpty());
     }
 
-    @Test
-    void lastOperatorWinsWhenThereAreSeveral() {
-        Condition condition = Condition.from("if(a>b>=c){");
+    @ParameterizedTest
+    @ValueSource(strings = {"if(a>b>=c){", "if((a+b)>c){", "if (a > b && b > 0) {", "if (f(x) > 0) {",
+            "if (a[0] == 1) {", "if (!(a > b)) {", "if (a = b) {"})
+    void complexConditionsKeepOnlyTheirText(String line) {
+        Condition condition = Condition.from(line);
 
-        assertEquals(">=", condition.getComparisonSign());
-        assertEquals(List.of("a", "b", "c"), condition.getOperands());
+        assertTrue(line.contains(condition.getText()), condition.getText());
+        assertNull(condition.getComparisonSign());
+        assertTrue(condition.getOperands().isEmpty());
+    }
+
+    @Test
+    void negationAndNegativeNumbersAreRead() {
+        Condition negation = Condition.from("if (! done) {");
+        Condition negative = Condition.from("if (a < - 5) {");
+
+        assertEquals("!", negation.getComparisonSign());
+        assertEquals(List.of("done"), negation.getOperands());
+        assertEquals("<", negative.getComparisonSign());
+        assertEquals(List.of("a", "-5"), negative.getOperands());
     }
 
     @Test

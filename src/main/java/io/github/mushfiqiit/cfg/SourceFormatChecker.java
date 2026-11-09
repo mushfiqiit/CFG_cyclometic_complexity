@@ -64,7 +64,7 @@ final class SourceFormatChecker {
             return List.of(new Problem(Math.max(code.size(), 1),
                     "there is no code to analyze; the file needs a function such as \"int main(void) {\""));
         }
-        String header = withoutLiterals(code.get(functionLine).strip());
+        String header = CLiterals.blankOut(code.get(functionLine).strip());
         if (!isFunctionHeader(header)) {
             return List.of(new Problem(functionLine + 1,
                     "expected the function to analyze, such as \"int main(void) {\", with { at the end of the line;"
@@ -124,7 +124,7 @@ final class SourceFormatChecker {
         if (line.isEmpty()) {
             return;
         }
-        String bare = withoutLiterals(line);
+        String bare = CLiterals.blankOut(line);
         int opens = count(bare, '{');
         int closes = count(bare, '}');
 
@@ -252,38 +252,6 @@ final class SourceFormatChecker {
      */
     private static boolean isControlHeader(String line) {
         return SyntaxIdentifier.isIf(line) || SyntaxIdentifier.isElse(line) || SyntaxIdentifier.isLoop(line);
-    }
-
-    /**
-     * Replaces the contents of string and character literals with spaces, so braces inside them,
-     * as in {@code printf("}")}, are not counted.
-     *
-     * @param line the line to clean
-     * @return the line with each literal's characters replaced, quotes included
-     */
-    private static String withoutLiterals(String line) {
-        StringBuilder result = new StringBuilder(line.length());
-        char quote = 0;
-        for (int i = 0; i < line.length(); i++) {
-            char character = line.charAt(i);
-            if (quote == 0) {
-                if (character == '"' || character == '\'') {
-                    quote = character;
-                    result.append(' ');
-                } else {
-                    result.append(character);
-                }
-            } else {
-                if (character == '\\') {
-                    i++;
-                    result.append(' ');
-                } else if (character == quote) {
-                    quote = 0;
-                }
-                result.append(' ');
-            }
-        }
-        return result.toString().strip();
     }
 
     /**

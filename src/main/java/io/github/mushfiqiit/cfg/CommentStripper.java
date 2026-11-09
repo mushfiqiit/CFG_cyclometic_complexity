@@ -45,8 +45,8 @@ final class CommentStripper {
                     inBlockComment = true;
                     kept.append(' ');
                     i += 2;
-                } else if (line.charAt(i) == '"' || line.charAt(i) == '\'') {
-                    int end = endOfLiteral(line, i);
+                } else if (CLiterals.isQuote(line.charAt(i))) {
+                    int end = CLiterals.endOf(line, i);
                     kept.append(line, i, end);
                     i = end;
                 } else {
@@ -57,34 +57,5 @@ final class CommentStripper {
             code.add(kept.toString().stripTrailing());
         }
         return List.copyOf(code);
-    }
-
-    // ***************************************************************************
-    // Helpers
-    // ***************************************************************************
-
-    /**
-     * Finds where a string or character literal ends, skipping escaped characters such as
-     * {@code \"}.
-     *
-     * @param line the source line
-     * @param start index of the literal's opening quote
-     * @return the index just after the closing quote, or the line's length if the literal is not
-     *         closed on this line
-     */
-    private static int endOfLiteral(String line, int start) {
-        char quote = line.charAt(start);
-        int i = start + 1;
-        while (i < line.length()) {
-            char character = line.charAt(i);
-            if (character == '\\') {
-                i += 2;
-            } else if (character == quote) {
-                return i + 1;
-            } else {
-                i++;
-            }
-        }
-        return line.length();
     }
 }

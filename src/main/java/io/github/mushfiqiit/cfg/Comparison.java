@@ -1,5 +1,6 @@
 package io.github.mushfiqiit.cfg;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,6 @@ record Comparison(String left, String operator, String right) {
 
     private static final Pattern VARIABLE = Pattern.compile("[A-Za-z_]\\w*");
     private static final Pattern INTEGER = Pattern.compile("-?\\d+");
-    private static final int MAX_DIGITS = 10;
     private static final Set<String> OPERATORS = Set.of("<", "<=", ">", ">=", "==", "!=");
 
     // ***************************************************************************
@@ -74,12 +74,8 @@ record Comparison(String left, String operator, String right) {
         if (!INTEGER.matcher(text).matches()) {
             return OptionalInt.empty();
         }
-        String digits = text.replaceFirst("^-?0*(?=\\d)", "");
-        if (digits.length() > MAX_DIGITS) {
-            return OptionalInt.empty();
-        }
-        long value = Long.parseLong(text);
-        return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE ? OptionalInt.of((int) value) : OptionalInt.empty();
+        BigInteger value = new BigInteger(text);
+        return value.bitLength() < Integer.SIZE ? OptionalInt.of(value.intValue()) : OptionalInt.empty();
     }
 
     /**

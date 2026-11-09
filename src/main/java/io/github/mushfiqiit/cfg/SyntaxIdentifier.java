@@ -112,20 +112,6 @@ public final class SyntaxIdentifier {
     }
 
     // ***************************************************************************
-    // Single characters
-    // ***************************************************************************
-
-    /**
-     * Tells whether a character can be part of a comparison operator.
-     *
-     * @param character the character to check
-     * @return true for {@code <}, {@code >}, {@code =} and {@code !}
-     */
-    public static boolean isComparisonSign(char character) {
-        return character == '<' || character == '>' || character == '=' || character == '!';
-    }
-
-    // ***************************************************************************
     // Helpers
     // ***************************************************************************
 
