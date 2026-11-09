@@ -5,8 +5,6 @@ import javafx.scene.shape.Line;
 
 /**
  * A line that stays attached to two graph nodes as they move.
- *
- * @author Asus
  */
 class Edge extends Line {
 

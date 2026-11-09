@@ -6,7 +6,6 @@ import static io.github.mushfiqiit.cfg.TestSupport.edges;
 import static io.github.mushfiqiit.cfg.TestSupport.program;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,25 +15,23 @@ import org.junit.jupiter.api.Test;
 class ControlFlowGraphBuilderTest {
 
     @Test
-    void rootIsTheFirstLineAfterThePreamble() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("sample.c")));
+    void entryIsTheFirstLineAfterThePreamble() {
+        ControlFlowGraph graph = build(program("sample.c"));
 
-        assertEquals(1, builder.root().getNumber());
-        assertEquals("\tint main(){", builder.root().getStatement());
+        assertEquals(1, graph.entry());
+        assertEquals("\tint main(){", graph.getStatement(graph.entry()));
     }
 
     @Test
-    void linesStartingWithHashOrSlashArePreamble() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("two-preamble-lines.c")));
-
-        assertEquals(2, builder.root().getNumber());
+    void commentAndHashLinesArePreamble() {
+        assertEquals(2, build(program("two-preamble-lines.c")).entry());
     }
 
     @Test
     void blankLineInThePreambleIsSkipped() {
-        ControlFlowGraphBuilder builder = assertDoesNotThrow(() -> ControlFlowGraphBuilder.from(ParsedSource.of(program("typical.c"))));
+        ControlFlowGraph graph = assertDoesNotThrow(() -> build(program("typical.c")));
 
-        assertEquals("int main(void) {", builder.root().getStatement());
+        assertEquals("int main(void) {", graph.getStatement(graph.entry()));
     }
 
     @Test
@@ -160,14 +157,6 @@ class ControlFlowGraphBuilderTest {
         ControlFlowGraph graph = build(List.of("\tint main(){", "    int a;", "    a=1;"));
 
         assertEquals(edgeSet("1->2", "2->3"), edges(graph));
-    }
-
-    @Test
-    void buildCanOnlyBeCalledOnce() {
-        ControlFlowGraphBuilder builder = ControlFlowGraphBuilder.from(ParsedSource.of(program("sample.c")));
-        builder.build();
-
-        assertThrows(IllegalStateException.class, builder::build);
     }
 
     @Test

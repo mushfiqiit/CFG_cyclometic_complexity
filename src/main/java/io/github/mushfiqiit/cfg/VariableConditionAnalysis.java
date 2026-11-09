@@ -43,11 +43,10 @@ record VariableConditionAnalysis(List<DeclaredVariable> variables, List<String> 
     static VariableConditionAnalysis of(ParsedSource source) {
         Map<String, DeclaredVariable> declared = DeclarationParser.parse(source);
         List<ConditionSite> conditions = ConditionPaths.find(source);
-        List<String> undeclared = TestCaseGenerator.inputNames(conditions, declared).stream()
-                .filter(name -> !declared.containsKey(name))
-                .toList();
+        List<String> inputs = TestCaseGenerator.inputNames(conditions, declared);
+        List<String> undeclared = inputs.stream().filter(name -> !declared.containsKey(name)).toList();
         return new VariableConditionAnalysis(List.copyOf(declared.values()), undeclared, conditions,
-                TestCaseGenerator.generate(conditions, declared));
+                TestCaseGenerator.generate(conditions, declared, inputs));
     }
 
     /**

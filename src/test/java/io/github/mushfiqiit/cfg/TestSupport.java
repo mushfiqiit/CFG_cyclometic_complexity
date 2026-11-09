@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
@@ -122,11 +123,9 @@ final class TestSupport {
      */
     static Set<String> edges(ControlFlowGraph graph) {
         Set<String> edges = new TreeSet<>();
-        for (int from = 0; from < graph.getLineCount(); from++) {
-            for (int to = 0; to < graph.getLineCount(); to++) {
-                if (graph.hasEdge(from, to)) {
-                    edges.add((from + 1) + "->" + (to + 1));
-                }
+        for (int from : graph.reachableNodes()) {
+            for (int to : graph.successorsOf(from)) {
+                edges.add((from + 1) + "->" + (to + 1));
             }
         }
         return edges;
@@ -139,7 +138,19 @@ final class TestSupport {
      * @return the graph
      */
     static ControlFlowGraph build(List<String> lines) {
-        return ControlFlowGraphBuilder.from(ParsedSource.of(lines)).build();
+        return ControlFlowGraph.of(ParsedSource.of(lines));
+    }
+
+    /**
+     * Generates the test cases for a program's conditions, as the program does.
+     *
+     * @param lines the program's lines
+     * @param declared the declared variables, by name
+     * @return the test cases
+     */
+    static List<TestCaseGenerator.TestCase> generateTestCases(List<String> lines, Map<String, DeclaredVariable> declared) {
+        List<ConditionSite> sites = ConditionPaths.find(ParsedSource.of(lines));
+        return TestCaseGenerator.generate(sites, declared, TestCaseGenerator.inputNames(sites, declared));
     }
 
     /**

@@ -50,7 +50,7 @@ class ComplexityAgreementTest {
             Map<String, DeclaredVariable> declared = new LinkedHashMap<>();
             List.of("a", "b", "k").forEach(name -> declared.put(name, DeclaredVariable.input(name)));
 
-            for (TestCaseGenerator.TestCase testCase : TestCaseGenerator.generate(ConditionPaths.find(ParsedSource.of(lines)), declared)) {
+            for (TestCaseGenerator.TestCase testCase : TestSupport.generateTestCases(lines, declared)) {
                 List<ConditionSite.Requirement> required = new ArrayList<>(testCase.site().path());
                 required.add(new ConditionSite.Requirement(testCase.site().lineNumber(), testCase.site().condition(),
                         testCase.outcome()));

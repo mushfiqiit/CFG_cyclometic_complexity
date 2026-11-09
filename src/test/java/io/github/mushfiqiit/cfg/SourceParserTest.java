@@ -202,7 +202,7 @@ class SourceParserTest {
 
     @Test
     void fileWithoutCodeHasNoFunction() {
-        assertTrue(SourceParser.parse(List.of("#include <stdio.h>", "", "// comment")).isEmpty());
+        assertTrue(ParsedSource.of(List.of("#include <stdio.h>", "", "// comment")).function().isEmpty());
         assertTrue(SourceParser.parse(List.of()).isEmpty());
     }
 
@@ -215,6 +215,6 @@ class SourceParserTest {
 
     @Test
     void builderRejectsAFileWithoutCode() {
-        assertThrows(IllegalArgumentException.class, () -> ControlFlowGraphBuilder.from(ParsedSource.of(List.of("#include <stdio.h>"))));
+        assertThrows(IllegalArgumentException.class, () -> ControlFlowGraph.of(ParsedSource.of(List.of("#include <stdio.h>"))));
     }
 }

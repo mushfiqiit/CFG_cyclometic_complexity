@@ -61,14 +61,14 @@ final class SourceParser {
     }
 
     /**
-     * Tells whether a line comes before the function: a blank line, a line containing
-     * {@code intmain()}, or one starting with {@code #} or {@code /}.
+     * Tells whether a line comes before the function: a blank line or one starting with
+     * {@code #}, such as {@code #include <stdio.h>}. Comments are already removed.
      *
      * @param line the source line to check
      * @return true if the line is part of the preamble
      */
     private static boolean isPreamble(String line) {
-        return line.isBlank() || line.contains("intmain(){") || line.charAt(0) == '#' || line.charAt(0) == '/';
+        return line.isBlank() || line.charAt(0) == '#';
     }
 
     // ***************************************************************************

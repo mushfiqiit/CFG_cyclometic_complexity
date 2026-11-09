@@ -4,55 +4,32 @@ import io.github.mushfiqiit.cfg.SourceTree.Block;
 import io.github.mushfiqiit.cfg.SourceTree.Branch;
 import io.github.mushfiqiit.cfg.SourceTree.Function;
 import io.github.mushfiqiit.cfg.SourceTree.IfChain;
-import io.github.mushfiqiit.cfg.SourceTree.Line;
 import io.github.mushfiqiit.cfg.SourceTree.Loop;
 import io.github.mushfiqiit.cfg.SourceTree.Simple;
 import io.github.mushfiqiit.cfg.SourceTree.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
- * Builds a {@link ControlFlowGraph} from C source lines, with one node per non-blank line.
- *
- * <p>The graph is linked by walking the source's {@link SourceTree}. Create a builder with
- * {@link #from(ParsedSource)}, which creates the root, then call {@link #build()} once to link the
- * remaining lines.
- *
- * @author sikde
+ * Links the lines of a parsed function into the edges of its control flow graph. Each line is
+ * identified by its index in the file. Use {@link ControlFlowGraph#of(ParsedSource)}.
  */
-public final class ControlFlowGraphBuilder {
+final class ControlFlowGraphBuilder {
 
-    private final List<String> lines;
-    private final Function function;
-    private final Node root;
-    private boolean built;
+    private final List<SortedSet<Integer>> successors;
 
     /**
-     * Creates a builder for a function that has already been read.
+     * Creates a builder with no edges yet.
      *
-     * @param lines the source lines; each line's index becomes its node number
-     * @param function the function's structure
+     * @param lineCount the number of lines in the source file
      */
-    private ControlFlowGraphBuilder(List<String> lines, Function function) {
-        this.lines = lines;
-        this.function = function;
-        this.root = nodeFor(function.header());
-    }
-
-    // ***************************************************************************
-    // Creating a builder
-    // ***************************************************************************
-
-    /**
-     * Creates a builder for parsed source code. The function's opening line, normally the
-     * {@code main} function's, becomes the root.
-     *
-     * @param source the source to build the graph of; each line's index becomes its node number
-     * @return a builder that has its root but has not linked any other lines yet
-     * @throws IllegalArgumentException if the source has no code
-     */
-    static ControlFlowGraphBuilder from(ParsedSource source) {
-        return new ControlFlowGraphBuilder(source.lines(), source.requireFunction());
+    private ControlFlowGraphBuilder(int lineCount) {
+        successors = new ArrayList<>(lineCount);
+        for (int line = 0; line < lineCount; line++) {
+            successors.add(new TreeSet<>());
+        }
     }
 
     // ***************************************************************************
@@ -60,67 +37,57 @@ public final class ControlFlowGraphBuilder {
     // ***************************************************************************
 
     /**
-     * Returns the root node, which is known before {@link #build()} runs.
+     * Builds the control flow graph of a source file, starting from the function's header.
      *
-     * @return the root node
+     * @param source the source to build the graph of
+     * @return the graph
+     * @throws IllegalArgumentException if the source has no code
      */
-    public Node root() {
-        return root;
+    static ControlFlowGraph build(ParsedSource source) {
+        Function function = source.requireFunction();
+        ControlFlowGraphBuilder builder = new ControlFlowGraphBuilder(source.lines().size());
+        int entry = function.header().index();
+        builder.linkBlock(function.body(), List.of(entry));
+        return new ControlFlowGraph(source.lines(), entry, builder.successors);
     }
 
     /**
-     * Links every line of the root's block and returns the finished graph.
-     *
-     * @return the control flow graph
-     * @throws IllegalStateException if called more than once
-     */
-    public ControlFlowGraph build() {
-        if (built) {
-            throw new IllegalStateException("build() can only be called once");
-        }
-        built = true;
-        linkBlock(function.body(), List.of(root));
-        return new ControlFlowGraph(root, lines);
-    }
-
-    /**
-     * Links a block's statements in order, then its closing line.
+     * Links the statements of a block in order, then the block's closing line.
      *
      * @param block the block to link
-     * @param entries the nodes that lead into the block's first statement
-     * @return the nodes that lead out of the block: its closing line, or the last statements if
-     *         the file ends before the block is closed
+     * @param entries the lines that lead into the block's first statement
+     * @return the lines that lead to whatever follows the block
      */
-    private static List<Node> linkBlock(Block block, List<Node> entries) {
-        List<Node> previous = entries;
+    private List<Integer> linkBlock(Block block, List<Integer> entries) {
+        List<Integer> previous = entries;
         for (Statement statement : block.statements()) {
             previous = linkStatement(statement, previous);
         }
         if (block.closing().isEmpty()) {
             return previous;
         }
-        Node closing = nodeFor(block.closing().orElseThrow());
+        int closing = block.closing().orElseThrow().index();
         link(previous, closing);
         return List.of(closing);
     }
 
     /**
-     * Links one statement after the nodes that lead into it.
+     * Links one statement after the lines that lead into it.
      *
      * @param statement the statement to link
-     * @param entries the nodes that lead into it
-     * @return the nodes that lead to the statement after it
+     * @param entries the lines that lead into it
+     * @return the lines that lead to the statement after it
      */
-    private static List<Node> linkStatement(Statement statement, List<Node> entries) {
+    private List<Integer> linkStatement(Statement statement, List<Integer> entries) {
         if (statement instanceof IfChain chain) {
             return linkIfChain(chain, entries);
         }
         if (statement instanceof Loop loop) {
             return linkLoop(loop, entries);
         }
-        Node node = nodeFor(((Simple) statement).line());
-        link(entries, node);
-        return List.of(node);
+        int line = ((Simple) statement).line().index();
+        link(entries, line);
+        return List.of(line);
     }
 
     /**
@@ -129,25 +96,19 @@ public final class ControlFlowGraphBuilder {
      * statement after the chain.
      *
      * @param chain the chain to link
-     * @param entries the nodes that lead into the first condition
-     * @return the nodes that lead to the statement after the chain
+     * @param entries the lines that lead into the first condition
+     * @return the lines that lead to the statement after the chain
      */
-    private static List<Node> linkIfChain(IfChain chain, List<Node> entries) {
-        List<Node> exits = new ArrayList<>();
-        Node falseBranch = null;
+    private List<Integer> linkIfChain(IfChain chain, List<Integer> entries) {
+        List<Integer> exits = new ArrayList<>();
+        List<Integer> leadingIn = entries;
         for (Branch branch : chain.branches()) {
-            Node header = nodeFor(branch.header());
-            if (falseBranch == null) {
-                link(entries, header);
-            } else {
-                falseBranch.addChild(header);
-            }
+            int header = branch.header().index();
+            link(leadingIn, header);
             exits.addAll(linkBlock(branch.body(), List.of(header)));
-            falseBranch = branch.kind().hasCondition() ? header : null;
+            leadingIn = branch.kind().hasCondition() ? List.of(header) : List.of();
         }
-        if (falseBranch != null) {
-            exits.add(falseBranch);
-        }
+        exits.addAll(leadingIn);
         return exits;
     }
 
@@ -156,43 +117,29 @@ public final class ControlFlowGraphBuilder {
      * leads back to the loop, and the loop leads to the statement after it when it finishes.
      *
      * @param loop the loop to link
-     * @param entries the nodes that lead into the loop
-     * @return the loop node, which leads to the statement after the loop
+     * @param entries the lines that lead into the loop
+     * @return the loop line, which leads to the statement after the loop
      */
-    private static List<Node> linkLoop(Loop loop, List<Node> entries) {
-        Node header = nodeFor(loop.header());
+    private List<Integer> linkLoop(Loop loop, List<Integer> entries) {
+        int header = loop.header().index();
         link(entries, header);
-        for (Node bodyExit : linkBlock(loop.body(), List.of(header))) {
+        for (int bodyExit : linkBlock(loop.body(), List.of(header))) {
             if (bodyExit != header) {
-                bodyExit.addChild(header);
+                successors.get(bodyExit).add(header);
             }
         }
         return List.of(header);
     }
 
-    // ***************************************************************************
-    // Helpers
-    // ***************************************************************************
-
     /**
-     * Creates the node for a line.
+     * Makes every line in {@code from} lead to {@code to}.
      *
-     * @param line the line
-     * @return a node numbered by the line's index
+     * @param from the lines to link from
+     * @param to the line to link to
      */
-    private static Node nodeFor(Line line) {
-        return new Node(line.index(), line.text());
-    }
-
-    /**
-     * Makes every node in {@code from} lead to {@code to}.
-     *
-     * @param from the nodes to link from
-     * @param to the node to link to
-     */
-    private static void link(List<Node> from, Node to) {
-        for (Node node : from) {
-            node.addChild(to);
+    private void link(List<Integer> from, int to) {
+        for (int line : from) {
+            successors.get(line).add(to);
         }
     }
 }

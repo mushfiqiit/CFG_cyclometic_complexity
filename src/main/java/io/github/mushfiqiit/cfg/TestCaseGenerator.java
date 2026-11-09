@@ -119,10 +119,12 @@ final class TestCaseGenerator {
      *
      * @param sites the conditions with the paths that lead to them
      * @param declared the function's declared {@code int} variables, by name
+     * @param inputs the input variable names, in report order, as given by
+     *        {@link #inputNames(List, Map)}
      * @return the test cases, in condition order with the true outcome first
      */
-    static List<TestCase> generate(List<ConditionSite> sites, Map<String, DeclaredVariable> declared) {
-        List<String> inputs = inputNames(sites, declared);
+    static List<TestCase> generate(List<ConditionSite> sites, Map<String, DeclaredVariable> declared,
+            List<String> inputs) {
         List<TestCase> cases = new ArrayList<>();
         for (ConditionSite site : sites) {
             for (boolean outcome : List.of(true, false)) {

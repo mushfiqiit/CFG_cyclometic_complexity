@@ -6,8 +6,6 @@ import javafx.scene.input.MouseEvent;
 
 /**
  * A draggable graph node. Double-clicking switches its label between number and text.
- *
- * @author Asus
  */
 class GraphicNode extends Button {
 

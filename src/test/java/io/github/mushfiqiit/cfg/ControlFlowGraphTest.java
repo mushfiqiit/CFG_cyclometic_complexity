@@ -18,7 +18,6 @@ class ControlFlowGraphTest {
 
     @Test
     void reportsLineCountAndStatements() {
-        assertEquals(17, graph.getLineCount());
         assertEquals("\t    while(k>0){", graph.getStatement(3));
     }
 
@@ -73,7 +72,7 @@ class ControlFlowGraphTest {
 
     @Test
     void lookingUpALineThatDoesNotExistThrowsAsTheClassDocumentationSays() {
-        int missing = graph.getLineCount();
+        int missing = program("sample.c").size();
 
         assertThrows(IndexOutOfBoundsException.class, () -> graph.getStatement(missing));
         assertThrows(IndexOutOfBoundsException.class, () -> graph.successorsOf(missing));

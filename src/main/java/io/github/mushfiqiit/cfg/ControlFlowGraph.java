@@ -6,21 +6,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.Queue;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 
 /**
  * The control flow graph of a C source file: which lines can run directly after which. Each node
  * is a source line, numbered from 0 by its position in the file. Create one with
- * {@link ControlFlowGraphBuilder}.
+ * {@link #of(ParsedSource)}.
  *
- * <p>The graph holds only the lines the root can reach. It is built once and does not change.
+ * <p>The graph holds only the lines the entry line can reach. It is built once and does not change.
  *
  * <p>The methods that look up a line by its node number, {@link #getStatement(int)},
  * {@link #successorsOf(int)}, {@link #levelOf(int)} and {@link #hasEdge(int, int)} (for its
  * {@code from} line), throw {@link IndexOutOfBoundsException} if no line has that number.
- *
- * @author sikde
  */
 public final class ControlFlowGraph {
 
@@ -32,74 +29,80 @@ public final class ControlFlowGraph {
     private final int edgeCount;
 
     /**
-     * Creates a graph from linked nodes, recording every edge reachable from the root and each
-     * node's distance from it.
+     * Creates a graph from linked lines, keeping every edge reachable from the entry line and each
+     * line's distance from it.
      *
-     * @param root the node the graph starts from
      * @param lines the source lines; each line's index is its node number
+     * @param entry the node the graph starts from
+     * @param edges the lines each line leads to, one set per line
      */
-    ControlFlowGraph(Node root, List<String> lines) {
+    ControlFlowGraph(List<String> lines, int entry, List<? extends Set<Integer>> edges) {
         this.lines = List.copyOf(lines);
-        this.entry = root.getNumber();
-        this.successors = collectSuccessors(root, lines.size());
-        this.levels = measureLevels(root.getNumber());
+        this.entry = entry;
+        this.successors = collectSuccessors(entry, edges);
+        this.levels = measureLevels(entry);
 
         List<Integer> reached = new ArrayList<>();
-        int edges = 0;
+        int edgeTotal = 0;
         for (int node = 0; node < lines.size(); node++) {
             if (levels[node] > 0) {
                 reached.add(node);
             }
-            edges += successors.get(node).size();
+            edgeTotal += successors.get(node).size();
         }
         this.reachableNodes = Collections.unmodifiableList(reached);
-        this.edgeCount = edges;
+        this.edgeCount = edgeTotal;
     }
 
     /**
-     * Walks the linked nodes from the root and records each node's successors, without
+     * Walks the edges from the entry line and keeps each reached line's successors, without
      * duplicates and in order of node number.
      *
-     * @param root the node to start from
-     * @param lineCount number of lines in the source file
-     * @return one read-only list of successors per line; empty for lines the root cannot reach
+     * @param entry the node to start from
+     * @param edges the lines each line leads to, one set per line
+     * @return one read-only list of successors per line; empty for lines the entry cannot reach
      */
-    private static List<List<Integer>> collectSuccessors(Node root, int lineCount) {
-        List<SortedSet<Integer>> found = new ArrayList<>(lineCount);
-        for (int line = 0; line < lineCount; line++) {
-            found.add(new TreeSet<>());
-        }
-        boolean[] visited = new boolean[lineCount];
-        ArrayDeque<Node> pending = new ArrayDeque<>(List.of(root));
-        visited[root.getNumber()] = true;
+    private static List<List<Integer>> collectSuccessors(int entry, List<? extends Set<Integer>> edges) {
+        boolean[] visited = new boolean[edges.size()];
+        ArrayDeque<Integer> pending = new ArrayDeque<>(List.of(entry));
+        visited[entry] = true;
         while (!pending.isEmpty()) {
-            Node node = pending.pop();
-            for (Node child : node.getChildren()) {
-                found.get(node.getNumber()).add(child.getNumber());
-                if (!visited[child.getNumber()]) {
-                    visited[child.getNumber()] = true;
-                    pending.push(child);
+            for (int next : edges.get(pending.pop())) {
+                if (!visited[next]) {
+                    visited[next] = true;
+                    pending.push(next);
                 }
             }
         }
-        List<List<Integer>> result = new ArrayList<>(lineCount);
-        for (SortedSet<Integer> nodeSuccessors : found) {
-            result.add(List.copyOf(nodeSuccessors));
+        List<List<Integer>> result = new ArrayList<>(edges.size());
+        for (int line = 0; line < edges.size(); line++) {
+            result.add(visited[line] ? edges.get(line).stream().sorted().toList() : List.of());
         }
         return Collections.unmodifiableList(result);
     }
 
     /**
-     * Finds each node's distance from the root with a breadth-first traversal. The root is on
-     * level 1.
+     * Builds the control flow graph of a source file, starting from the function's header.
      *
-     * @param root number of the root node
-     * @return each line's level, or 0 for lines the root cannot reach
+     * @param source the source to build the graph of
+     * @return the graph
+     * @throws IllegalArgumentException if the source has no code
      */
-    private int[] measureLevels(int root) {
+    static ControlFlowGraph of(ParsedSource source) {
+        return ControlFlowGraphBuilder.build(source);
+    }
+
+    /**
+     * Finds each node's distance from the entry line with a breadth-first traversal. The entry line
+     * is on level 1.
+     *
+     * @param entry number of the entry node
+     * @return each line's level, or 0 for lines the entry line cannot reach
+     */
+    private int[] measureLevels(int entry) {
         int[] result = new int[lines.size()];
-        result[root] = 1;
-        Queue<Integer> queue = new ArrayDeque<>(List.of(root));
+        result[entry] = 1;
+        Queue<Integer> queue = new ArrayDeque<>(List.of(entry));
         while (!queue.isEmpty()) {
             int current = queue.poll();
             for (int next : successors.get(current)) {
@@ -117,16 +120,6 @@ public final class ControlFlowGraph {
     // ***************************************************************************
 
     /**
-     * Returns the number of lines in the source file. Node numbers range from 0 to one less than
-     * this.
-     *
-     * @return the source file's line count
-     */
-    public int getLineCount() {
-        return lines.size();
-    }
-
-    /**
      * Returns the source line of a node.
      *
      * @param number the node's number
@@ -141,7 +134,8 @@ public final class ControlFlowGraph {
     // ***************************************************************************
 
     /**
-     * Returns the nodes in the graph: the lines the root can reach, including the root itself.
+     * Returns the nodes in the graph: the lines the entry line can reach, including the entry
+     * line itself.
      *
      * @return the node numbers in increasing order, as a read-only list
      */
@@ -154,7 +148,7 @@ public final class ControlFlowGraph {
      *
      * @param node the line's node number
      * @return the successors' node numbers in increasing order, as a read-only list; empty for a
-     *         line with no successors or one the root cannot reach
+     *         line with no successors or one the entry line cannot reach
      */
     public List<Integer> successorsOf(int node) {
         return successors.get(node);
@@ -181,7 +175,8 @@ public final class ControlFlowGraph {
     }
 
     /**
-     * Counts the nodes in the graph: the lines the root can reach, including the root itself.
+     * Counts the nodes in the graph: the lines the entry line can reach, including the entry
+     * line itself.
      *
      * @return the number of nodes
      */
@@ -208,11 +203,11 @@ public final class ControlFlowGraph {
     }
 
     /**
-     * Returns a line's distance from the root: 1 for the root, 2 for the lines right after it, and
-     * so on.
+     * Returns a line's distance from the entry line: 1 for the entry line, 2 for the lines right
+     * after it, and so on.
      *
      * @param node the line's node number
-     * @return the level, or an empty value if the root cannot reach the line
+     * @return the level, or an empty value if the entry line cannot reach the line
      */
     public OptionalInt levelOf(int node) {
         return levels[node] > 0 ? OptionalInt.of(levels[node]) : OptionalInt.empty();

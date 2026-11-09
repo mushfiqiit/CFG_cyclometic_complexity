@@ -18,7 +18,7 @@ record ComplexityAnalysis(ControlFlowGraph graph, DecisionCounts decisions) {
      * @throws IllegalArgumentException if the source has no code
      */
     static ComplexityAnalysis of(ParsedSource source) {
-        ControlFlowGraph graph = ControlFlowGraphBuilder.from(source).build();
+        ControlFlowGraph graph = ControlFlowGraph.of(source);
         return new ComplexityAnalysis(graph, ComplexityCalculator.countDecisions(source));
     }
 

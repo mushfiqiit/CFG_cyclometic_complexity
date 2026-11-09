@@ -2,9 +2,12 @@ package io.github.mushfiqiit.cfg;
 
 import java.io.IOException;
 import java.nio.charset.MalformedInputException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.Optional;
@@ -37,14 +40,14 @@ final class SourceLoader {
     static Optional<ParsedSource> load(String sourceFile, PrintStream out, PrintStream err) {
         List<String> lines;
         try {
-            lines = SourceCodeReader.readLines(sourceFile);
+            lines = Files.readAllLines(Path.of(sourceFile), StandardCharsets.UTF_8);
         } catch (IOException e) {
             err.println(describeReadFailure(sourceFile, e));
             return Optional.empty();
         }
         out.println("Source file: " + sourceFile + " (" + lines.size() + " lines)");
 
-        ParsedSource source = ParsedSource.of(CommentStripper.strip(lines));
+        ParsedSource source = ParsedSource.of(lines);
         List<SourceFormatChecker.Problem> problems = SourceFormatChecker.check(source);
         if (!problems.isEmpty()) {
             printProblems(err, sourceFile, problems);

@@ -30,12 +30,14 @@ record ParsedSource(List<String> lines, Optional<Function> function) {
     }
 
     /**
-     * Reads source code into its tree. This is the only place the source is parsed.
+     * Removes the comments from source code and reads it into its tree. This is the only place
+     * the source is parsed.
      *
-     * @param code the source lines, with comments removed
-     * @return the lines and their tree
+     * @param lines the source lines as read from the file
+     * @return the lines without comments, and their tree
      */
-    static ParsedSource of(List<String> code) {
+    static ParsedSource of(List<String> lines) {
+        List<String> code = CommentStripper.strip(lines);
         return new ParsedSource(code, SourceParser.parse(code));
     }
 
