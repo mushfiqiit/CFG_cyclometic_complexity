@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -47,14 +48,15 @@ final class Menu {
     /**
      * Shows the menu, then asks for a choice until the answer is one of the menu keys.
      *
-     * @param in where to read the answers from
+     * @param in where to read the answers from, as UTF-8 text; the menu keys are plain digits,
+     *        which are the same in every common console encoding
      * @param out where to print the menu and prompts
      * @return the chosen analysis, or an empty value if the input ends before a valid answer
      * @throws IOException if the answers cannot be read
      */
     static Optional<Analysis> ask(InputStream in, PrintStream out) throws IOException {
         printChoices(out);
-        BufferedReader input = new BufferedReader(new InputStreamReader(in));
+        BufferedReader input = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
         while (true) {
             out.print(PROMPT);
             out.flush();

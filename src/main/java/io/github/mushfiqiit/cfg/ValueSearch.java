@@ -59,15 +59,16 @@ final class ValueSearch {
      *         given a starting value
      */
     static Result search(Map<Comparison, Boolean> constraints, List<String> free, Map<String, Integer> startValues) {
+        Set<String> freeNames = Set.copyOf(free);
         for (Comparison comparison : constraints.keySet()) {
             for (String variable : comparison.variables()) {
-                if (!free.contains(variable) && startValues.get(variable) == null) {
+                if (!freeNames.contains(variable) && startValues.get(variable) == null) {
                     throw new IllegalArgumentException("no starting value for variable " + variable);
                 }
             }
         }
         List<Integer> candidates = candidates(constraints.keySet(), startValues);
-        if (Math.pow(candidates.size(), free.size()) > SEARCH_LIMIT) {
+        if (exceedsSearchLimit(candidates.size(), free.size())) {
             return new Result(Status.TOO_MANY_COMBINATIONS, Optional.empty());
         }
         Map<String, Integer> values = new LinkedHashMap<>(startValues);
@@ -86,6 +87,26 @@ final class ValueSearch {
             } while (advance(choice, width));
         }
         return new Result(Status.NO_SOLUTION, Optional.empty());
+    }
+
+    /**
+     * Tells whether trying every combination of values would go over {@link #SEARCH_LIMIT}. The
+     * count is worked out exactly, and stops growing as soon as it passes the limit, so it never
+     * overflows.
+     *
+     * @param candidateCount the number of values each free variable can take
+     * @param freeCount the number of free variables
+     * @return true if {@code candidateCount} to the power {@code freeCount} is over the limit
+     */
+    private static boolean exceedsSearchLimit(int candidateCount, int freeCount) {
+        long combinations = 1;
+        for (int i = 0; i < freeCount; i++) {
+            combinations *= candidateCount;
+            if (combinations > SEARCH_LIMIT) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -69,6 +69,18 @@ class ValueSearchTest {
         assertEquals(new Result(Status.NO_SOLUTION, Optional.empty()), result);
     }
 
+    /** With start values of 0 and no constants, each variable has 5 candidates (-2 to 2). */
+    @Test
+    void searchLimitIsCountedExactly() {
+        Map<Comparison, Boolean> constraints = require(comparison("a", "<", "b"), true);
+        String[] seven = {"a", "b", "c", "d", "e", "f", "g"};
+        String[] eight = {"a", "b", "c", "d", "e", "f", "g", "h"};
+
+        assertEquals(Status.FOUND, ValueSearch.search(constraints, List.of(seven), zeros(seven)).status());
+        assertEquals(Status.TOO_MANY_COMBINATIONS,
+                ValueSearch.search(constraints, List.of(eight), zeros(eight)).status());
+    }
+
     @Test
     void refusesSearchesThatAreTooLarge() {
         String[] names = {"a", "b", "c", "d", "e", "f", "g", "h", "i"};

@@ -215,14 +215,12 @@ final class TestCaseGenerator {
                 .filter(variable -> variable.source() == DeclaredVariable.Source.FIXED)
                 .forEach(variable -> startValues.put(variable.name(), variable.value()));
 
-        List<String> free = new ArrayList<>();
-        for (Comparison comparison : constraints.keySet()) {
-            for (String variable : comparison.variables()) {
-                if (inputs.contains(variable) && !free.contains(variable)) {
-                    free.add(variable);
-                }
-            }
-        }
+        Set<String> inputNames = Set.copyOf(inputs);
+        List<String> free = constraints.keySet().stream()
+                .flatMap(comparison -> comparison.variables().stream())
+                .filter(inputNames::contains)
+                .distinct()
+                .toList();
 
         ValueSearch.Result result = ValueSearch.search(constraints, free, startValues);
         return switch (result.status()) {
